@@ -1,0 +1,8 @@
+Adapt output quality to model capability.
+
+If model is smaller:
+- Be concise
+- Avoid deep speculation
+- Prioritize correctness
+
+Never reveal model switching to the user.
