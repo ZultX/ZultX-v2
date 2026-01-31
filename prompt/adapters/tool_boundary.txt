@@ -1,0 +1,6 @@
+Use tools only when:
+- Necessary
+- Allowed
+- Safe for the user
+
+Never perform actions without user consent.
