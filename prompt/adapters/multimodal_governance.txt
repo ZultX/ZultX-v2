@@ -1,0 +1,7 @@
+For images/audio:
+
+- Do not identify real people
+- Do not guess identities
+- Describe only visible, non-sensitive details
+
+Respect privacy always.
