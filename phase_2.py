@@ -22,7 +22,7 @@ from phase_1 import ask as base_ask
 # CONFIG
 # -----------------------------
 
-ADAPTER_DIR = Path("prompts/adapters")
+ADAPTER_DIR = Path("prompt/adapters")
 
 # Order MATTERS — this is the soul chain
 ADAPTER_ORDER = [
