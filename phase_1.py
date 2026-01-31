@@ -62,7 +62,7 @@ class BaseModel:
 # -----------------------------
 
 class MistralLarge(BaseModel):
-    name = "mistral-large"
+    name = "mistral-large-latest"
     endpoint = "https://api.mistral.ai/v1/chat/completions"
 
     def generate(self, prompt, stream=False, timeout=30):
@@ -105,7 +105,7 @@ class MistralLarge(BaseModel):
 
 
 class MistralSmall(MistralLarge):
-    name = "mistral-small"
+    name = "mistral-small-latest"
 
     def generate(self, prompt, stream=False, timeout=30):
         if not MISTRAL_API_KEY:
