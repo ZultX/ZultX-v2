@@ -3,34 +3,115 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ZULTX — v1.1</title>
+<title>ZultX — v1.1</title>
 <style>
 :root{
-  --bg:#000;
-  --panel:#0b0b0b;
+  --bg:#0b0b0f;
+  --panel:#0f1113;
   --muted:#9aa0a6;
-  --text:#eaeaea;
+  --text:#e8eaed;
   --accent:#18d018;
-  --outline:#121212;
+  --outline:#1a1a1a;
   --glass: rgba(255,255,255,0.03);
   --side-w: 320px;
+  --header-bg: #ffffff; /* user requested white top */
+  --header-text: #0a0a0a;
+  --tip-color: #2e8b57;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:var(--text);background:var(--bg)}
-header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--outline);background:linear-gradient(180deg,#041,#0000)}
-.logo{font-weight:800;letter-spacing:1px;font-size:20px;display:flex;align-items:center;gap:8px}
-.logo .fire{background:linear-gradient(90deg,#ff3b3b,#ff8a00);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
-.logo .x-black{color:#000;background:#e6e6e6;padding:2px 6px;border-radius:3px}
+header{
+  height:72px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--outline);
+  background:var(--header-bg);
+  color:var(--header-text);
+  position:relative;
+  z-index:40;
+  box-shadow:0 6px 18px rgba(0,0,0,0.2);
+}
+.logo{
+  font-weight:900;
+  letter-spacing:0.6px;
+  font-size:20px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.logo .fire{
+  background:linear-gradient(90deg,#ff3b3b,#ff8a00);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  font-weight:900;
+}
+.logo .x-black{
+  background:#000;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:6px;
+  font-weight:800;
+}
+.top-center {
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.top-center button {
+  background:#fff;
+  border:1px solid #e6e6e6;
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 6px 18px rgba(0,0,0,0.08);
+}
 .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
 .top-actions button{background:var(--glass);border:1px solid var(--outline);padding:8px 12px;border-radius:8px;color:var(--text);cursor:pointer}
 
-.app{display:flex;height:calc(100% - 64px);}
+/* layout */
+.app{display:flex;height:calc(100% - 72px);}
 
-/* side panel */
-.side{width:var(--side-w);background:linear-gradient(180deg,#050505,#0b0b0b);border-right:1px solid var(--outline);padding:12px;overflow:auto}
+/* left side panel (history) */
+.side{
+  width:var(--side-w);
+  background:linear-gradient(180deg,#08090a,#0b0b0b);
+  border-right:1px solid var(--outline);
+  padding:12px;
+  overflow:auto;
+  transition:transform .28s ease;
+  position:relative;
+  z-index:10;
+}
 .side .menu-btn{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
 .side .menu-btn:hover{background:rgba(255,255,255,0.02)}
 .side h3{margin:12px 0 6px;color:var(--muted);font-weight:600}
+
+/* half-panel overlay when hamburger pressed */
+.halfpanel {
+  position:fixed;
+  left:0;
+  top:72px;
+  bottom:0;
+  width:50%;
+  max-width:720px;
+  background:linear-gradient(180deg,#060708,#0b0b0b);
+  border-right:1px solid var(--outline);
+  padding:18px;
+  transform:translateX(-110%);
+  transition:transform .28s cubic-bezier(.2,.9,.2,1);
+  z-index:80;
+  box-shadow: 6px 0 40px rgba(0,0,0,0.6);
+  overflow:auto;
+}
+.halfpanel.open{transform:translateX(0%)}
+.halfpanel .closeBtn{position:absolute;right:12px;top:12px;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:var(--muted);cursor:pointer}
 
 /* main chat */
 .main{flex:1;display:flex;flex-direction:column;position:relative}
@@ -42,37 +123,70 @@ header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;bo
 .msg.ai{background:linear-gradient(180deg,#0f1720,#07101a);margin-right:auto;border-top-left-radius:2px}
 .meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:8px;align-items:center}
 
-/* typing indicator + cursor */
+/* typing indicator */
 .typing{display:inline-block;margin-left:6px;font-size:12px;color:var(--muted)}
 .cursor{display:inline-block;width:10px;height:18px;margin-left:6px;background:var(--text);border-radius:2px;animation:blink 1s steps(2,end) infinite}
 @keyframes blink{50%{opacity:0}}
 
 /* input bar */
-.compose{padding:12px;border-top:1px solid var(--outline);display:flex;gap:8px;align-items:center;background:var(--panel)}
-.compose textarea{flex:1;background:#000;border:1px solid var(--outline);padding:12px;border-radius:10px;color:var(--text);min-height:46px;resize:none}
+.compose{padding:12px;border-top:1px solid var(--outline);display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#020203,#0b0b0b)}
+.compose textarea{flex:1;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:12px;color:var(--text);min-height:46px;resize:none}
 .compose button{background:var(--accent);border:none;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer;color:#000}
+
+/* top-tip button style (floating top center) */
+.top-tip{background:linear-gradient(180deg,#fff,#f7f7f7);border-radius:999px;padding:8px 14px;border:1px solid #eee;display:flex;align-items:center;gap:8px;cursor:pointer}
+.top-tip .apple{background:linear-gradient(180deg,#92e08a,#3cb371);padding:6px;border-radius:8px;font-weight:800;color:#012}
 
 /* small helpers */
 .hint{color:var(--muted);font-size:13px;text-align:center;margin-top:8px}
 .mode-pill{padding:6px 8px;border-radius:999px;background:#0c0c0c;border:1px solid var(--outline);font-size:13px;color:var(--muted)}
 .fab{position:fixed;right:20px;bottom:20px;background:linear-gradient(180deg,#16c516,#0aa50a);color:#000;padding:12px 14px;border-radius:999px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.6)}
-@media(max-width:880px){.side{display:none}:root{--side-w:260px}}
+
+/* small responsive tweaks */
+@media(max-width:880px){
+  .side{display:none}
+  .halfpanel{width:86%}
+  .center-screen .bigBtn{width:100%}
+}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo"><span class="fire">Zul</span><span style="color:#fff">t</span><span class="x-black">X</span></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button id="hamb" aria-label="menu" style="background:transparent;border:0;font-size:20px;cursor:pointer">≡</button>
+    <div class="logo"><span class="fire">Zult</span><span class="x-black">X</span></div>
+  </div>
+
+  <div class="top-center">
+    <!-- Top center tip button -->
+    <div class="top-tip" id="topTipBtn" title="Tip ZultX">
+      <span class="apple">🍏</span>
+      <strong>Tip</strong>
+    </div>
+  </div>
+
   <div class="top-actions">
-    <button id="hamb">☰</button>
     <button id="lettersBtn">✉️ Letters</button>
     <div id="modePill" class="mode-pill">Mode: Friend</div>
   </div>
 </header>
 
+<!-- half screen panel (opens on hamburger) -->
+<div id="halfPanel" class="halfpanel" role="dialog" aria-hidden="true">
+  <button class="closeBtn" onclick="closeHalf()">✕</button>
+  <h2 style="margin-top:6px">ZultX — History & Servers</h2>
+  <p style="color:var(--muted);margin-top:8px">This panel covers half the screen (desktop/tablet). It shows chat history, servers, accounts and old AI sessions.</p>
+  <hr style="border-color:var(--outline)"/>
+  <div id="halfContent">
+    <button style="margin:8px 0;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03)">Account</button>
+    <div style="margin-top:12px;color:var(--muted)">(This is a demo panel — wire up your real history & servers later)</div>
+  </div>
+</div>
+
 <div class="app">
   <aside class="side" id="sidePanel">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="display:flex;gap:8px;align-items:center"><strong>ZULTX</strong><small style="color:var(--muted)"> v1.1</small></div>
+      <div style="display:flex;gap:8px;align-items:center"><strong>ZultX</strong><small style="color:var(--muted)"> v1.1</small></div>
       <div style="font-size:12px;color:var(--muted)">Hardik</div>
     </div>
 
@@ -84,15 +198,15 @@ header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;bo
     <h3>Letters</h3>
     <div id="lettersList" style="display:flex;flex-direction:column;gap:6px"></div>
     <div style="height:20px"></div>
-    <div class="hint">Tap messages to open. Use Tip (🍏) to support.</div>
+    <div class="hint">Tap messages to open. Use top Tip to support.</div>
   </aside>
 
   <main class="main">
     <div id="centerScreen" class="center-screen">
       <div style="max-width:720px">
-        <div style="font-size:28px;font-weight:800;margin-bottom:16px">What can I help with?</div>
+        <div style="font-size:28px;font-weight:800;margin-bottom:16px;color:#fff">What can I help with?</div>
         <div style="display:flex;gap:8px;justify-content:center">
-          <button onclick="focusInput()" style="padding:10px 14px;border-radius:999px;border:1px solid var(--outline);background:transparent;color:var(--text);cursor:pointer">Ask Something To ZultX..</button>
+          <button class="bigBtn" onclick="focusInput()" style="padding:12px 18px;border-radius:999px;border:1px solid var(--outline);background:transparent;color:var(--text);cursor:pointer">Ask Something To ZultX..</button>
         </div>
       </div>
     </div>
@@ -100,16 +214,14 @@ header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;bo
     <div id="chatArea" class="chat-wrap" style="display:none"></div>
 
     <div class="compose">
-      <textarea id="input" placeholder="Ask ZULTX..." rows="1"></textarea>
+      <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
       <button id="sendBtn">Send</button>
     </div>
   </main>
 </div>
 
-<button class="fab" id="tipBtn">🍏 Tip</button>
-
 <!-- letters modal -->
-<div id="lettersModal" style="display:none;position:fixed;left:8%;top:8%;right:8%;bottom:8%;background:#061212;border-radius:12px;padding:18px;z-index:60;overflow:auto;border:1px solid #142">
+<div id="lettersModal" style="display:none;position:fixed;left:8%;top:12%;right:8%;bottom:12%;background:#061212;border-radius:12px;padding:18px;z-index:60;overflow:auto;border:1px solid #142">
   <div style="display:flex;justify-content:space-between;align-items:center">
     <h2>Letters</h2>
     <button onclick="closeLetters()">Close</button>
@@ -118,8 +230,8 @@ header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;bo
 </div>
 
 <!-- tip modal -->
-<div id="tipModal" style="display:none;position:fixed;left:20%;top:18%;right:20%;background:#061212;border-radius:12px;padding:18px;z-index:70;border:1px solid #142">
-  <h3>Tip ZULTX</h3>
+<div id="tipModal" style="display:none;position:fixed;left:18%;top:18%;right:18%;background:#061212;border-radius:12px;padding:18px;z-index:70;border:1px solid #142">
+  <h3>Tip ZultX</h3>
   <div style="display:flex;gap:8px;margin-top:12px">
     <button onclick="createTip(10)">₹10</button>
     <button onclick="createTip(40)">₹40</button>
@@ -141,11 +253,13 @@ header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;bo
 </div>
 
 <script>
+/* ---------- helpers ---------- */
 const chatArea = document.getElementById("chatArea");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const centerScreen = document.getElementById("centerScreen");
 const sidePanel = document.getElementById("sidePanel");
+const halfPanel = document.getElementById("halfPanel");
 let streaming = false;
 
 function focusInput(){
@@ -161,6 +275,7 @@ function newChat(){
   addSystemMsg("New chat started.");
 }
 
+/* message elements */
 function addUserMsg(text){
   const d = document.createElement("div");
   d.className = "msg user";
@@ -172,7 +287,7 @@ function addUserMsg(text){
 function addAiMsg(text){
   const d = document.createElement("div");
   d.className = "msg ai";
-  d.textContent = text;
+  d.textContent = text || "";
   chatArea.appendChild(d);
   chatArea.scrollTop = chatArea.scrollHeight;
   return d;
@@ -188,6 +303,7 @@ function addSystemMsg(text){
   return d;
 }
 
+/* typing indicator */
 function showTyping(flag){
   let t = document.getElementById("typingIndicator");
   if(flag){
@@ -195,7 +311,7 @@ function showTyping(flag){
       t = document.createElement("div");
       t.id = "typingIndicator";
       t.className = "meta";
-      t.innerHTML = 'ZULTX is thinking<span class="cursor"></span>';
+      t.innerHTML = 'ZultX is thinking<span class="cursor"></span>';
       chatArea.appendChild(t);
       chatArea.scrollTop = chatArea.scrollHeight;
     }
@@ -205,50 +321,7 @@ function showTyping(flag){
   }
 }
 
-async function sendMessage(){
-  const text = input.value.trim();
-  if(!text) return;
-  addUserMsg(text);
-  input.value = "";
-  sendBtn.disabled = true;
-  streaming = true;
-  showTyping(true);
-
-  const aiDiv = addAiMsg("");
-  try{
-    const res = await fetch(`/ask?q=${encodeURIComponent(text)}&stream=true`);
-    if(!res.ok){
-      aiDiv.textContent = "⚠️ Server error: "+(await res.text());
-      sendBtn.disabled = false;
-      streaming = false;
-      showTyping(false);
-      return;
-    }
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    while(true){
-      const {value, done} = await reader.read();
-      if(done) break;
-      aiDiv.textContent += dec.decode(value);
-      chatArea.scrollTop = chatArea.scrollHeight;
-    }
-    addFeedbackRow(aiDiv, text);
-  }catch(e){
-    aiDiv.textContent = "⚠️ Connection error.";
-  }
-  sendBtn.disabled = false;
-  streaming = false;
-  showTyping(false);
-}
-
-sendBtn.onclick = sendMessage;
-input.addEventListener("keydown", e=>{
-  if(e.key === "Enter" && !e.shiftKey){
-    e.preventDefault();
-    sendMessage();
-  }
-});
-
+/* feedback row */
 function addFeedbackRow(aiDiv, q){
   const row = document.createElement("div");
   row.className = "meta";
@@ -260,25 +333,178 @@ function addFeedbackRow(aiDiv, q){
   aiDiv.after(row);
 }
 
+/* ---------- streaming-safe sendMessage ---------- */
+async function sendMessage(){
+  const text = input.value.trim();
+  if(!text) return;
+  addUserMsg(text);
+  input.value = "";
+  sendBtn.disabled = true;
+  streaming = true;
+  showTyping(true);
+
+  const aiDiv = addAiMsg("");
+  try{
+    // call backend streaming ask
+    const res = await fetch(`/ask?q=${encodeURIComponent(text)}&stream=true`);
+    if(!res.ok){
+      // try to get JSON error
+      let errText = await res.text();
+      try { errText = JSON.parse(errText).detail || JSON.parse(errText).error || errText; } catch(_) {}
+      aiDiv.textContent = "⚠️ Server error: "+ errText;
+      sendBtn.disabled = false;
+      streaming = false;
+      showTyping(false);
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buffer = "";
+
+    function appendToAi(t){
+      // append text safely
+      aiDiv.textContent += t;
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    while(true){
+      const {value, done} = await reader.read();
+      if(done) break;
+      const chunk = dec.decode(value, {stream:true});
+      buffer += chunk;
+
+      // Process lines
+      const parts = buffer.split(/\r?\n/);
+      // leave last partial in buffer
+      buffer = parts.pop();
+
+      for(const line of parts){
+        const trimmed = line.trim();
+        if(!trimmed) continue;
+
+        // If SSE style "data: ..." — strip prefix
+        const s = trimmed.startsWith("data:") ? trimmed.slice(5).trim() : trimmed;
+
+        if(!s || s === "[DONE]") {
+          continue;
+        }
+
+        // Try to parse JSON — many providers stream JSON chunks
+        let parsed = null;
+        try {
+          parsed = JSON.parse(s);
+        } catch(e){
+          parsed = null;
+        }
+
+        if(parsed){
+          // HANDLE common streaming shapes:
+
+          // 1) Mistral / openai-like: {choices:[{delta:{content: "..."}}]}
+          try {
+            if(parsed.choices && Array.isArray(parsed.choices)){
+              for(const ch of parsed.choices){
+                if(ch.delta && ch.delta.content){
+                  appendToAi(ch.delta.content);
+                } else if(ch.message && ch.message.content){
+                  // some responses use message.content
+                  const content = (ch.message.content || "");
+                  if(typeof content === "string") appendToAi(content);
+                }
+              }
+              continue;
+            }
+          } catch(_) {}
+
+          // 2) Gemini-like: {candidates:[{content:{parts:[{text: "..." }]}}]}
+          try {
+            if(parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content){
+              const partsArr = parsed.candidates[0].content.parts || [];
+              for(const p of partsArr){
+                if(p.text) appendToAi(p.text);
+              }
+              continue;
+            }
+          } catch(_) {}
+
+          // 3) Some other shape: search for any "content" strings
+          try {
+            const jsonStr = JSON.stringify(parsed);
+            // crude fallback: find "content":"..." occurrences
+            const m = jsonStr.match(/"content"\s*:\s*"([^"]+)"/);
+            if(m && m[1]) appendToAi(m[1]);
+            else {
+              // last-resort: append the raw JSON text minimally
+              // but avoid spamming raw JSON in UI
+              // append nothing in that case
+            }
+          } catch(_) {}
+        } else {
+          // Not JSON — append directly (plain text chunk)
+          appendToAi(s);
+        }
+      } // for parts
+    } // while
+
+    // flush remaining buffer if it contains plain text
+    if(buffer && buffer.trim() && buffer.trim() !== "[DONE]"){
+      try {
+        const maybe = buffer.trim();
+        // try parse
+        const p = JSON.parse(maybe);
+        // if parse success, attempt same extraction as above
+        if(p){
+          if(p.choices && p.choices[0] && p.choices[0].delta && p.choices[0].delta.content) addToAiSafe(p.choices[0].delta.content);
+        }
+      } catch(e){
+        aiDiv.textContent += buffer;
+      }
+    }
+
+    addFeedbackRow(aiDiv, text);
+
+  }catch(e){
+    console.error(e);
+    aiDiv.textContent = "⚠️ Connection error.";
+  }
+  sendBtn.disabled = false;
+  streaming = false;
+  showTyping(false);
+}
+
+/* safe add used in fallback parsing */
+function addToAiSafe(t){
+  if(!t) return;
+  const last = document.querySelector(".msg.ai:last-of-type");
+  if(last) last.textContent += t;
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+/* ---------- small utilities ---------- */
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", e=>{
+  if(e.key === "Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
 async function vote(kind,btn){
   const payload = {type: kind, time: Date.now()};
   await fetch("/feedback", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
   btn.textContent = kind === 'up' ? 'Thanks 👍' : 'Saved 👎';
 }
 
+/* share card generator */
 function generateShare(btn){
-  const msg = btn.parentNode.previousSibling.textContent || "";
+  const msg = (btn.parentNode.previousSibling && btn.parentNode.previousSibling.textContent) || "";
   const canvas = document.createElement("canvas");
-  canvas.width = 1200;
-  canvas.height = 630;
+  canvas.width = 1200; canvas.height = 630;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#041014";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 48px Inter, Arial";
-  ctx.fillText("ZULTX", 40, 90);
-  ctx.fillStyle = "#cfe";
-  ctx.font = "28px Inter, Arial";
+  ctx.fillStyle = "#041014"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 48px Inter, Arial"; ctx.fillText("ZultX", 40, 90);
+  ctx.fillStyle = "#cfe"; ctx.font = "28px Inter, Arial";
   const lines = wrapText(ctx, msg, 1120);
   let y = 160;
   for(const line of lines){
@@ -287,43 +513,35 @@ function generateShare(btn){
     if(y > 560) break;
   }
   const data = canvas.toDataURL("image/png");
-  const link = document.createElement("a");
-  link.href = data;
-  link.download = "zultx-share.png";
-  link.click();
+  const link = document.createElement("a"); link.href = data; link.download = "zultx-share.png"; link.click();
 }
-
 function wrapText(ctx, text, maxWidth){
   const words = text.split(/\s+/);
-  const lines = [];
-  let current = "";
+  const lines = []; let current = "";
   for(const w of words){
     const test = current ? current + " " + w : w;
     const m = ctx.measureText(test).width;
-    if(m > maxWidth){
-      lines.push(current);
-      current = w;
-    } else {
-      current = test;
-    }
+    if(m > maxWidth){ lines.push(current); current = w; } else { current = test; }
   }
   if(current) lines.push(current);
   return lines;
 }
 
-// Letters
+/* letters */
 async function loadLetters(){
-  const res = await fetch("/letters");
-  const data = await res.json();
-  const list = document.getElementById("lettersList");
-  list.innerHTML = "";
-  (data.letters||[]).forEach(name=>{
-    const el = document.createElement("div");
-    el.className = "menu-btn";
-    el.textContent = name;
-    el.onclick = ()=>openLetter(name);
-    list.appendChild(el);
-  });
+  try{
+    const res = await fetch("/letters");
+    const data = await res.json();
+    const list = document.getElementById("lettersList");
+    list.innerHTML = "";
+    (data.letters||[]).forEach(name=>{
+      const el = document.createElement("div");
+      el.className = "menu-btn";
+      el.textContent = name;
+      el.onclick = ()=>openLetter(name);
+      list.appendChild(el);
+    });
+  }catch(e){}
 }
 async function openLetter(name){
   const res = await fetch(`/letters/${encodeURIComponent(name)}`);
@@ -334,75 +552,58 @@ async function openLetter(name){
 }
 function closeLetters(){ document.getElementById("lettersModal").style.display="none" }
 
-// Tip modal + UPI flow
-document.getElementById("tipBtn").onclick = ()=>{ document.getElementById("tipModal").style.display = "block"; }
+/* tip handling (uses your /tip endpoint) */
+document.getElementById("topTipBtn").onclick = ()=>{ document.getElementById("tipModal").style.display = "block"; }
 function closeTip(){ document.getElementById("tipModal").style.display = "none"; }
 
 async function createTip(amount){
-  // ask server for UPI link + QR
   const res = await fetch("/tip", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({amount})});
   const data = await res.json();
   if(!data.ok){
     alert("Tip creation failed: " + (data.note || data.error || "unknown"));
-    closeTip();
-    return;
+    closeTip(); return;
   }
   const upi_link = data.upi_link;
   const qr = data.qr;
-  // mobile: try to open the UPI intent (works on Android/iPhone with UPI)
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if(isMobile){
-    // Redirect to UPI link — phone will prompt UPI apps
+    // open UPI intent
     window.location.href = upi_link;
     closeTip();
-    // Optionally show a tiny confirmation prompt after a few seconds (client will then call /tip/confirm)
     setTimeout(()=> {
-      const ok = confirm("Did the payment app open? If you completed the tip, press OK to record it (you can paste txn id).");
+      const ok = confirm("Did your UPI app open? Press OK if you completed payment (you can paste txn id).");
       if(ok){
-        const payment_id = prompt("Optional: paste payment id / txn id (if you have it)","");
+        const payment_id = prompt("Optional: paste payment id / txn id","");
         fetch("/tip/confirm", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({order_id: data.order.id, payment_id, amount})});
       }
     }, 1200);
     return;
   }
-  // Desktop: show QR modal and copy button
   openQr(qr, upi_link);
   closeTip();
 }
-
 function openQr(qrUrl, upiLink){
   const wrap = document.getElementById("qrImgWrap");
   wrap.innerHTML = `<img src="${qrUrl}" alt="UPI QR" style="width:280px;height:280px;border-radius:8px"/>`;
   const copyBtn = document.getElementById("copyUpiBtn");
   copyBtn.onclick = async ()=>{
-    try{
-      await navigator.clipboard.writeText(upiLink);
-      copyBtn.textContent = "Copied ✓";
-    }catch(e){
-      alert("Copy failed — UPI link: " + upiLink);
-    }
+    try{ await navigator.clipboard.writeText(upiLink); copyBtn.textContent = "Copied ✓"; }catch(e){ alert("Copy failed — UPI link: " + upiLink); }
   };
   document.getElementById("qrModal").style.display = "block";
 }
-
 function closeQr(){ document.getElementById("qrModal").style.display = "none"; }
 
-// hamburger toggle
+/* halfpanel toggles */
 document.getElementById("hamb").onclick = ()=>{
-  if(sidePanel.style.display === "none" || getComputedStyle(sidePanel).display === "none"){
-    sidePanel.style.display = "block";
-  } else {
-    sidePanel.style.display = "none";
-  }
+  if(halfPanel.classList.contains("open")) closeHalf();
+  else openHalf();
 };
+function openHalf(){ halfPanel.classList.add("open"); halfPanel.setAttribute("aria-hidden","false"); }
+function closeHalf(){ halfPanel.classList.remove("open"); halfPanel.setAttribute("aria-hidden","true"); }
 
-document.getElementById("lettersBtn").onclick = async ()=>{
-  await loadLetters();
-  document.getElementById("lettersModal").style.display = "block";
-};
-
-// init
+/* init */
 loadLetters();
 </script>
 </body>
-  </html>
+</html>
+    window.loca
