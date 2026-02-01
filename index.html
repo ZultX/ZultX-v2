@@ -6,27 +6,15 @@
 <title>ZULTX — v1.1</title>
 <style>
 :root{
-  --bg:#fafafa;
-  --panel:#ffffff;
-  --text:#0f0f0f;
-  --muted:#777;
-  --outline:#eaeaea;
-  --accent:#ffb6c1;
-  --glass: rgba(0,0,0,0.03);
+  --bg:#000;
+  --panel:#0b0b0b;
+  --muted:#9aa0a6;
+  --text:#eaeaea;
+  --accent:#18d018;
+  --outline:#121212;
+  --glass: rgba(255,255,255,0.03);
+  --side-w: 320px;
 }
-  
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#000;
-    --panel:#0b0b0b;
-    --text:#eaeaea;
-    --muted:#9aa0a6;
-    --outline:#121212;
-    --accent:#18d018;
-    --glass: rgba(255,255,255,0.03);
-  }
-}
-  
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:var(--text);background:var(--bg)}
 header{height:64px;display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--outline);background:linear-gradient(180deg,#041,#0000)}
@@ -417,4 +405,4 @@ document.getElementById("lettersBtn").onclick = async ()=>{
 loadLetters();
 </script>
 </body>
-</html>
+  </html>
