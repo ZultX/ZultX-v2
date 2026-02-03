@@ -518,3 +518,119 @@ function wrapText(ctx, text, maxWidth){
   }
   if(current) lines.push(current);
   return lines;
+}
+
+/* ---------- letters loading & modals ---------- */
+async function loadLetters(){
+  try{
+    const res = await fetch("/letters");
+    if(!res.ok) return;
+    const data = await res.json();
+    const list = document.getElementById("lettersList");
+    list.innerHTML = "";
+    (data.letters||[]).forEach(name=>{
+      const el = document.createElement("div");
+      el.className = "menu-btn";
+      el.textContent = name;
+      el.onclick = ()=>openLetter(name);
+      list.appendChild(el);
+    });
+  }catch(e){ console.warn("letters load failed", e); }
+}
+async function openLetter(name){
+  try{
+    const res = await fetch(`/letters/${encodeURIComponent(name)}`);
+    if(!res.ok) return alert("Unable to open");
+    const text = await res.text();
+    document.getElementById("modalLettersContent").textContent = text;
+    setVisible(lettersModal, true);
+  }catch(e){ alert("Unable to open"); }
+}
+function closeLetters(){ setVisible(lettersModal, false) }
+
+/* tip handling */
+function openTip(){ setVisible(tipModal, true); }
+function closeTip(){ setVisible(tipModal, false); }
+topTipBtn?.addEventListener('click', openTip);
+mobileTipBtn?.addEventListener('click', openTip);
+
+/* UPI tip creation */
+async function createTip(amount){
+  try{
+    const res = await fetch("/tip", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({amount})});
+    const data = await res.json();
+    if(!data.ok){ alert("Tip creation failed"); closeTip(); return; }
+    const upi_link = data.upi_link;
+    const qr = data.qr;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(isMobile){
+      // open UPI intent
+      window.location.href = upi_link;
+      closeTip();
+      setTimeout(()=> {
+        const ok = confirm("Did your UPI app open? Press OK if you completed payment.");
+        if(ok){
+          const payment_id = prompt("Optional: paste payment id / txn id","");
+          fetch("/tip/confirm", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({order_id: data.order.id, payment_id, amount})});
+        }
+      }, 1200);
+      return;
+    }
+    openQr(qr, upi_link);
+    closeTip();
+  }catch(e){ alert("Tip failed"); closeTip(); }
+}
+function openQr(qrUrl, upiLink){
+  const wrap = document.getElementById("qrImgWrap");
+  wrap.innerHTML = `<img src="${qrUrl}" alt="UPI QR" style="width:280px;height:280px;border-radius:8px"/>`;
+  const copyBtn = document.getElementById("copyUpiBtn");
+  copyBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(upiLink); copyBtn.textContent = "Copied ✓"; }catch(e){ alert("Copy failed — UPI link: " + upiLink); } };
+  setVisible(qrModal, true);
+}
+function closeQr(){ setVisible(qrModal, false) }
+
+/* ---------- halfpanel toggles ---------- */
+function openHalf(){ setVisible(halfPanel, true); }
+function closeHalf(){ setVisible(halfPanel, false); }
+hamb.onclick = ()=>{
+  const hidden = halfPanel.getAttribute('aria-hidden') === 'true';
+  if(hidden) openHalf(); else closeHalf();
+};
+
+/* close modals when clicking outside (nice UX) */
+document.addEventListener('click', (e)=>{
+  // if open and click outside modals, close them (simple)
+  [lettersModal, tipModal, qrModal].forEach(mod => {
+    if(!mod) return;
+    if(mod.getAttribute('aria-hidden') === 'false' && !mod.contains(e.target) && !e.target.closest('#lettersBtn') && !e.target.closest('#topTipBtn')){
+      setVisible(mod, false);
+    }
+  });
+});
+
+/* init UI: show mobile-tip only on mobile, load letters */
+function adaptMobileTip(){
+  const mobileRow = document.querySelector('.mobile-tip');
+  if(window.innerWidth <= 520){
+    mobileRow.style.display = 'flex';
+    // hide header-center to avoid duplicate tip
+    document.querySelector('.header-center').style.display = 'none';
+  } else {
+    mobileRow.style.display = 'none';
+    document.querySelector('.header-center').style.display = 'flex';
+  }
+}
+window.addEventListener('resize', adaptMobileTip);
+adaptMobileTip();
+loadLetters();
+
+/* small safety: ensure centerScreen is non-blocking initially */
+centerScreen.classList.remove('hidden'); // show default
+setVisible(lettersModal, false);
+setVisible(tipModal, false);
+setVisible(qrModal, false);
+setVisible(halfPanel, false);
+
+</script>
+</body>
+</html>
