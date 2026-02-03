@@ -5,14 +5,15 @@ import json
 import time
 import traceback
 import urllib.parse
-from typing import Generator, Union, Optional
+import asyncio
+from typing import Generator, Union, Optional, AsyncGenerator
+
 from fastapi import FastAPI, Query, Body, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import asyncio
 
-# Try to import phase_2.ask -> phase_1.ask -> fallback
+# Try optional external ask functions (phase_2 / phase_1).
 ASK_FUNC = None
 try:
     from phase_2 import ask as ask_func
@@ -24,18 +25,21 @@ except Exception:
         ASK_FUNC = ask_func
         print("[ZULTX] Using phase_1.ask")
     except Exception as e:
-        print("[ZULTX] No ask() found — falling back to fake stream.", e)
+        print("[ZULTX] No phase_1/phase_2 ask() found, using internal fallback. Error:", e)
         ASK_FUNC = None
 
+# ensure directories
 LETTERS_DIR = os.getenv("ZULTX_LETTERS_DIR", "letters")
 os.makedirs(LETTERS_DIR, exist_ok=True)
 os.makedirs("feedback", exist_ok=True)
 os.makedirs("tips", exist_ok=True)
 
+# Default UPI (safe placeholder)
 UPI_ID = os.getenv("UPI_ID", "9358588509@fam")
 
 app = FastAPI(title="ZULTX — v1.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -47,45 +51,83 @@ def index():
     return HTMLResponse("<html><body><h1>ZultX</h1><p>UI missing</p></body></html>")
 
 
+# SSE helper: always output `data: {...}\n\n` strings
 def sse_format(obj: dict) -> str:
-    # Format a JSON payload as an SSE "data: {json}\n\n"
     return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
 
 
-async def fake_stream_response(text: str, delay: float = 0.06) -> Generator[str, None, None]:
-    """
-    Yields text in small chunks wrapped as SSE data events with OpenAI-like structure.
-    Each event is: data: {"choices":[{"delta":{"content":"..."} }]}
-    """
-    # simple split of words/chars to simulate streaming
+# Internal fallback generator (async) to stream a string answer in chunks
+async def async_chunk_text_as_sse(text: str, chunk_size: int = 24, delay: float = 0.03) -> AsyncGenerator[str, None]:
+    # start role event (optional)
+    yield sse_format({"choices": [{"delta": {"role": "assistant", "content": ""}}]})
     i = 0
     n = len(text)
-    # Send short initial event (role)
-    yield sse_format({"choices":[{"delta":{"role":"assistant","content":""}}]})
     while i < n:
-        chunk = text[i: i + 24]  # 24 chars per chunk
-        payload = {"choices":[{"delta":{"content":chunk}}]}
+        chunk = text[i: i + chunk_size]
+        payload = {"choices": [{"delta": {"content": chunk}}]}
         yield sse_format(payload)
         await asyncio.sleep(delay)
-        i += 24
-    # final stop
-    yield sse_format({"choices":[{"delta":{},"finish_reason":"stop"}]})
+        i += chunk_size
+    # finalization event
+    yield sse_format({"choices": [{"delta": {}},], "finish_reason": "stop"})
     yield "data: [DONE]\n\n"
 
 
-def _to_generator(result: Union[str, Generator[str, None, None]], chunk_size: int = 256):
-    """
-    If result is iterable (generator), return as-is. If string, return generator that yields the string in chunks.
-    """
-    if hasattr(result, "__iter__") and not isinstance(result, str):
-        return result
-    text = str(result or "")
-    async def g():
-        for i in range(0, len(text), chunk_size):
-            yield sse_format({"choices":[{"delta":{"content": text[i:i+chunk_size]}}]})
-            await asyncio.sleep(0.02)
+# If external ASK_FUNC is missing, provide a simple fallback ask() that returns helpful text
+def local_fallback_ask(user_input: str, mode: str = "friend", temperature: Optional[float] = None,
+                       max_tokens: int = 512, stream: bool = False, speed: float = 0.02):
+    # A friendly response template (improves "I m sad" example)
+    base = user_input.strip().lower()
+    if "sad" in base or "depressed" in base or "unhappy" in base:
+        answer = ("Hey — I'm really sorry you're feeling sad. "
+                  "You're not alone. If you'd like, tell me what's going on and I will listen. "
+                  "Here are three quick things you can try right now:\n\n"
+                  "1) Take three slow deep breaths (inhale 4s, hold 2s, exhale 6s).\n"
+                  "2) Stand up and stretch for 30 seconds.\n"
+                  "3) Write one small thing you're grateful for.\n\n"
+                  "If you want, share more — I'm here to help you think through it.")
+    else:
+        answer = f"Hey. I heard: \"{user_input}\". I'd say: be kind to yourself — tell me more and I'll help."
+
+    # If streaming requested, return an async generator
+    if stream:
+        async def gen():
+            async for s in async_chunk_text_as_sse(answer, chunk_size=24, delay=speed):
+                yield s
+        return gen()
+    return answer
+
+
+# Helper that converts result (string / generator / async generator) into an SSE async generator of strings
+async def to_sse_async_generator(result: Union[str, Generator[str, None, None], AsyncGenerator[str, None], None],
+                                 stream_speed: float = 0.02) -> AsyncGenerator[str, None]:
+    # If result is None, use fallback
+    if result is None:
+        result = local_fallback_ask("I have nothing to say", stream=False)
+
+    # Async generator returned directly (assume it yields plain text fragments OR already sse-formatted strings)
+    if hasattr(result, "__aiter__"):
+        async for part in result:  # parts may be plain text fragments
+            # If already looks like sse-formatted (starts with "data:") pass through; else wrap it.
+            if isinstance(part, str) and part.strip().startswith("data:"):
+                yield part
+            else:
+                yield sse_format({"choices": [{"delta": {"content": str(part)}}]})
         yield "data: [DONE]\n\n"
-    return g()
+        return
+
+    # Sync iterator
+    if hasattr(result, "__iter__") and not isinstance(result, str):
+        for part in result:
+            yield sse_format({"choices": [{"delta": {"content": str(part)}}]})
+            await asyncio.sleep(stream_speed)
+        yield "data: [DONE]\n\n"
+        return
+
+    # Plain string
+    text = str(result or "")
+    async for s in async_chunk_text_as_sse(text, chunk_size=24, delay=stream_speed):
+        yield s
 
 
 @app.get("/ask")
@@ -100,59 +142,45 @@ async def ask_get(
     if not q or not q.strip():
         raise HTTPException(status_code=400, detail="Missing query")
 
-    # If we have a real ask function and it supports streaming, call it.
+    # Try to call imported ASK_FUNC if available
     if ASK_FUNC:
         try:
-            # Try to call it - it may return string, generator or asyncio generator
             result = ASK_FUNC(user_input=q, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, speed=speed)
         except Exception as e:
             traceback.print_exc()
             return JSONResponse({"error": "ZULTX processing failed", "detail": str(e)}, status_code=500)
 
-        # If user requested stream, try to return SSE-like streaming
+        # If streaming requested, return SSE stream
         if stream:
-            # If ASK_FUNC returned a generator of plain text parts, wrap as SSE.
-            if hasattr(result, "__aiter__") or hasattr(result, "__iter__"):
-                async def stream_gen():
-                    # If it's async generator:
-                    if hasattr(result, "__aiter__"):
-                        async for part in result:
-                            # If caller already returns JSON-like parts, try to send safe SSE
-                            try:
-                                if isinstance(part, dict):
-                                    yield sse_format(part)
-                                else:
-                                    # send as delta content
-                                    yield sse_format({"choices":[{"delta":{"content": str(part)}}]})
-                            except Exception:
-                                yield sse_format({"choices":[{"delta":{"content": str(part)}}]})
-                        yield "data: [DONE]\n\n"
-                    else:
-                        # sync iterator
-                        for part in result:
-                            yield sse_format({"choices":[{"delta":{"content": str(part)}}]})
-                            await asyncio.sleep(speed)
-                        yield "data: [DONE]\n\n"
-                return StreamingResponse(stream_gen(), media_type="text/event-stream")
-            else:
-                # If result is a plain string, fake stream it
-                return StreamingResponse(fake_stream_response(str(result), delay=speed), media_type="text/event-stream")
+            # If ASK_FUNC already returned an async generator, wrap it (safely)
+            try:
+                return StreamingResponse(to_sse_async_generator(result, stream_speed=speed), media_type="text/event-stream")
+            except Exception:
+                # fall back to fake stream
+                return StreamingResponse(to_sse_async_generator(local_fallback_ask(q, stream=True, speed=speed), stream_speed=speed),
+                                         media_type="text/event-stream")
         else:
-            # non-stream response
-            if isinstance(result, str):
-                return JSONResponse({"answer": result})
-            else:
-                # join parts if iterable
-                try:
-                    text = "".join([p async for p in result]) if hasattr(result, "__aiter__") else "".join(result)
-                except Exception:
+            # Non-streaming response: unify to JSON { answer: text }
+            try:
+                if hasattr(result, "__aiter__"):
+                    # consume async generator
+                    parts = []
+                    async for p in result:
+                        parts.append(str(p))
+                    text = "".join(parts)
+                elif hasattr(result, "__iter__") and not isinstance(result, str):
+                    text = "".join([str(p) for p in result])
+                else:
                     text = str(result)
-                return JSONResponse({"answer": text})
+            except Exception:
+                text = str(result)
+            return JSONResponse({"answer": text})
 
-    # No ASK_FUNC -> fallback fake-behavior
-    fallback_text = f"Echo (offline) — I heard: {q}\n\n(Use phase_2.ask for smarter replies.)"
+    # If ASK_FUNC not present — use local fallback
+    fallback_text = local_fallback_ask(q, stream=False)
     if stream:
-        return StreamingResponse(fake_stream_response(fallback_text, delay=speed), media_type="text/event-stream")
+        return StreamingResponse(to_sse_async_generator(local_fallback_ask(q, stream=True, speed=speed), stream_speed=speed),
+                                 media_type="text/event-stream")
     else:
         return JSONResponse({"answer": fallback_text})
 
