@@ -55,7 +55,7 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
   <aside class="side">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div><strong>ZultX</strong><small class="small-muted"> v1.1</small></div>
-      <div class="small-muted">Hardik</div>
+      <div class="small-muted">USER</div>
     </div>
 
     <h3>Your Chats</h3>
@@ -113,6 +113,8 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
 
 <script>
 /* ----------------- STATE ----------------- */
+  /* ----------------- CONFIG ----------------- */
+const API_BASE = "https://zultx.up.railway.app";
 const chatArea = document.getElementById("chatArea");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
@@ -204,10 +206,13 @@ async function sendMessage(){
 
   try{
     // call non-stream endpoint; always returns JSON { answer: "..." }
-    const res = await fetch(`/ask?q=${encodeURIComponent(text)}`, {
-      headers: { "Accept": "application/json" },
-      method: "GET"
-    });
+    const res = await fetch(
+  `${API_BASE}/ask?q=${encodeURIComponent(text)}`,
+  {
+    headers: { "Accept": "application/json" },
+    method: "GET"
+  }
+);
 
     if(!res.ok){
       aiDiv.textContent = "⚠️ Server error";
@@ -272,12 +277,12 @@ function openConversation(convoId){
 /* ----------------- Letters / Tips UI ----------------- */
 lettersBtn.addEventListener('click', async ()=>{
   try{
-    const res = await fetch('/letters');
+    const res = await fetch(`${API_BASE}/letters`);
     if(!res.ok) return alert('No letters');
     const data = await res.json();
     const name = (data.letters && data.letters.length) ? data.letters[0] : null;
     if(!name) { modalLettersContent.textContent = 'No letters found'; lettersModal.style.display='block'; return; }
-    const r2 = await fetch('/letters/' + encodeURIComponent(name));
+    const r2 = await fetch(`${API_BASE}/letters/` + encodeURIComponent(name));
     const text = await r2.text();
     modalLettersContent.textContent = text;
     lettersModal.style.display = 'block';
@@ -290,7 +295,14 @@ closeTipBtn.addEventListener('click', ()=> tipModal.style.display='none');
 
 async function createTip(amount){
   try{
-    const res = await fetch('/tip', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({amount}) });
+    const res = await fetch(
+  `${API_BASE}/tip`,
+  {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({amount})
+  }
+);
     const data = await res.json();
     if(!data.ok) return alert('Tip failed');
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -305,7 +317,7 @@ async function createTip(amount){
 closeQrBtn.addEventListener('click', ()=> qrModal.style.display='none');
 copyUpiBtn.addEventListener('click', async ()=>{
   try{
-    const res = await fetch('/tip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount:10}) });
+    const res = await fetch('${API_BASE}/tip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount:10}) });
     const data = await res.json();
     if(data && data.upi_link){
       await navigator.clipboard.writeText(data.upi_link);
