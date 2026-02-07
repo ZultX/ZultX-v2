@@ -39,7 +39,7 @@ os.makedirs("tips", exist_ok=True)
 example_path = os.path.join(LETTERS_DIR, "example.txt")
 if not os.path.exists(example_path):
     with open(example_path, "w", encoding="utf-8") as f:
-        f.write("Hello from ZultX — this is an example letter.\n\nEnjoy building!\n")
+        f.write("HEY!\nIf you like ZultX, so do not forget to TIP zultx.\nTip wil make more updates, faster and better zultx (also my confidence)\nThis is starting of zultx. I wish you will like it.\nIf you have any problem or complain, please mail to 'zultx.service@gmail.com'\nWith love,\nAura Sharma (hardik)\n13\nZultX-Owner.")
 
 # Default UPI (safe placeholder)
 UPI_ID = os.getenv("UPI_ID", "9358588509@fam")
