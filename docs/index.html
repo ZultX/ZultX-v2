@@ -27,9 +27,21 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:var(--text);background:var(--bg)}
 header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;color:#050505;border-bottom:1px solid var(--outline)}
-.logo{font-weight:900;display:flex;align-items:center;gap:8px}
+.logo{
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  font-size:20px;
+}
 .logo .fire{background:linear-gradient(90deg,#ff3b3b,#ff8a00);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
-.logo .x-black{background:#000;color:#fff;padding:4px 8px;border-radius:6px}
+.logo .x-black{
+  margin-left:2px;
+  background:#000;
+  color:#fff;
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:18px;
+}
 .top-tip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:linear-gradient(#fff,#f7f7f7);cursor:pointer}
 .app{display:flex;min-height:100vh;position:relative}
 .side{width:var(--side-w);background:linear-gradient(180deg,#08090a,#0b0b0b);border-right:1px solid var(--outline);padding:12px;overflow:auto}
@@ -53,12 +65,14 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
 <body>
 <header>
   <div style="display:flex;gap:10px;align-items:center">
-    <div class="logo"><span class="fire">Zult</span><span class="x-black">X</span></div>
+    <div class="logo">
+  <span class="fire">Zult<span class="x-black">X</span></span>
+    </div>
   </div>
   <div class="top-tip" id="topTipBtn"><span>🍏</span><strong> Tip</strong></div>
   <div style="display:flex;gap:10px;align-items:center">
     <button id="lettersBtn" style="background:transparent;border:0;cursor:pointer">✉️ Letters</button>
-    <div class="small-muted">v1.1/Friendly</div>
+    <div class="small-muted">v1.2/Public MVP</div>
   </div>
 </header>
 
@@ -113,13 +127,25 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
     <button onclick="createTip(500)">₹500</button>
   </div>
   <div style="margin-top:12px"><button id="closeTipBtn">Cancel</button></div>
+  <button id="copyUpiBtn" style="margin-top:8px">Copy UPI</button>
 </div>
 
 <!-- QR modal -->
 <div id="qrModal" class="modal" style="width:420px;left:calc(50% - 210px);right:auto;text-align:center">
   <h3>Scan to pay (UPI) - If No Qr Shown, Click Copy UPI</h3>
   <div id="qrImgWrap" style="margin-top:12px"></div>
-  <div style="margin-top:12px"><button id="copyUpiBtn">Copy UPI</button><button id="closeQrBtn">Close</button></div>
+
+<div id="upiFallback" style="display:none;margin-top:12px;color:#e8eaed">
+  <p><strong>Manual Payment:</strong></p>
+  <p class="small-muted">
+    1️⃣ Open any UPI app (GPay / PhonePe / Paytm)<br>
+    2️⃣ Choose <b>Pay via UPI ID</b><br>
+    3️⃣ Paste the UPI ID below<br>
+    4️⃣ Enter amount and pay ✅
+  </p>
+  <div style="margin-top:8px;padding:10px;border:1px dashed #333;border-radius:8px">
+    <code id="upiText">upi://pay</code>
+  </div>
 </div>
 
 <script>
@@ -190,7 +216,7 @@ function addBubble(kind, text){
   d.className = 'msg ' + (kind === 'user' ? 'user' : 'ai');
   d.textContent = text;
   chatArea.appendChild(d);
-  chatArea.scrollTop = chatArea.scrollHeight;
+  chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" });
   return d;
 }
 function addUserMsg(text){ addBubble('user', text); saveMessageToHistory(currentConversationId, 'user', text); }
@@ -213,7 +239,10 @@ async function sendMessage(){
   sendBtn.disabled = true;
 
   // insert temporary AI bubble
-  const aiDiv = addBubble('ai', 'ZultX is thinking deep.. (For Deeper, Better, User friendly Answers)');
+  const aiDiv = document.createElement('div');
+  aiDiv.className = 'msg ai';
+  aiDiv.textContent = 'ZultX is thinking deep.. (For Deeper, Better, User friendly Answers)';
+  chatArea.appendChild(aiDiv);
 
   try{
     // call non-stream endpoint; always returns JSON { answer: "..." }
@@ -304,39 +333,53 @@ closeLettersBtn.addEventListener('click', ()=> lettersModal.style.display='none'
 topTipBtn.addEventListener('click', ()=> tipModal.style.display='block');
 closeTipBtn.addEventListener('click', ()=> tipModal.style.display='none');
 
+
 async function createTip(amount){
   try{
-    const res = await fetch(
-  `${API_BASE}/tip`,
-  {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({amount})
-  }
-);
+    const res = await fetch(`${API_BASE}/tip`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount })
+    });
+
     const data = await res.json();
-    if(!data.ok) return alert('Tip failed');
+    if(!data || !data.upi_link) throw new Error("No UPI");
+
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     if(isMobile){
+      // Try auto-open UPI
       window.location.href = data.upi_link;
+
+      // fallback message after delay
+      setTimeout(() => {
+        alert(
+          "If payment app didn’t open:\n\n" +
+          "Open GPay / PhonePe / Paytm\n" +
+          "→ Pay via UPI ID\n" +
+          "→ Paste the UPI shown"
+        );
+      }, 1500);
+
     } else {
-      qrImgWrap.innerHTML = `<img src="${data.qr}" style="width:280px;height:280px;border-radius:8px" />`;
+      // Desktop → QR + fallback
+      qrImgWrap.innerHTML = `
+        <img src="${data.qr}" style="width:280px;height:280px;border-radius:8px" />
+      `;
+
+      document.getElementById("upiFallback").style.display = "block";
+      document.getElementById("upiText").textContent = data.upi_link;
+
       qrModal.style.display = 'block';
     }
-  }catch(e){ alert('Tip failed'); }
-}
-closeQrBtn.addEventListener('click', ()=> qrModal.style.display='none');
-copyUpiBtn.addEventListener('click', async ()=>{
-  try{
-    const res = await fetch('${API_BASE}/tip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount:10}) });
-    const data = await res.json();
-    if(data && data.upi_link){
-      await navigator.clipboard.writeText(data.upi_link);
-      copyUpiBtn.textContent = 'Copied ✓';
-    }
-  }catch(e){ alert('Copy failed'); }
-});
 
+  } catch(e){
+    alert(
+      "Payment couldn’t auto-open.\n\n" +
+      "Open your UPI app → Pay via UPI ID → Paste the UPI shown."
+    );
+  }
+}
 /* init */
 if(!currentConversationId){
   currentConversationId = makeConvoId();
