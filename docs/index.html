@@ -12,104 +12,194 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-<meta property="og:type" content="website">
-<meta property="og:title" content="ZultX AI — Fast Experimental Intelligence">
-<meta property="og:description" content="ZultX is an experimental, positive AI system focused on fast reasoning, clean UI, and intelligent conversation.">
-<meta property="og:url" content="https://zultx.github.io/ZultX-v2/">
-<meta property="og:image" content="https://zultx.github.io/ZultX-v2/og-image.png">  
-
+  
 <style>
 :root{
-  --bg:#0b0b0f;--muted:#9aa0a6;--text:#e8eaed;--accent:#18d018;--outline:#1a1a1a;
-  --side-w:320px;--header-h:72px;
+  --bg:#0b0b0f;
+  --muted:#9aa0a6;
+  --text:#e8eaed;
+  --accent:#f3d36b; /* golden-ish */
+  --accent-strong:#ffd54a;
+  --accent-dark:#b8860b;
+  --outline:#1a1a1a;
+  --side-w:320px;
+  --header-h:72px;
+  --card-bg: linear-gradient(180deg,#0e141c,#070c12);
+  --glass: rgba(255,255,255,0.03);
 }
+
+/* Light theme overrides */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#ffffff;
+    --muted:#6b7280;
+    --text:#0b1220;
+    --accent:#b58100;
+    --accent-strong:#c89b14;
+    --outline:#e6e6e6;
+    --card-bg: linear-gradient(180deg,#ffffff,#fafafa);
+    --glass: rgba(0,0,0,0.04);
+  }
+}
+
+/* Manual theme class (overrides media) */
+html.light {
+  --bg:#ffffff; --muted:#6b7280; --text:#0b1220; --outline:#e6e6e6; --card-bg: linear-gradient(180deg,#ffffff,#fafafa);
+}
+html.dark {
+  --bg:#0b0b0f; --muted:#9aa0a6; --text:#e8eaed; --outline:#141416; --card-bg: linear-gradient(180deg,#0e141c,#070c12);
+}
+
+/* Reset + base */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:var(--text);background:var(--bg)}
-header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;color:#050505;border-bottom:1px solid var(--outline)}
-.logo{
-  font-weight:900;
-  display:flex;
-  align-items:center;
-  font-size:20px;
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+
+/* Header */
+header{
+  position:sticky;top:0;height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+  background:transparent;color:var(--text);backdrop-filter: blur(6px);border-bottom:1px solid rgba(255,255,255,0.03);
 }
+.logo{font-weight:900;display:flex;align-items:center;font-size:20px}
 .logo .fire{background:linear-gradient(90deg,#ff3b3b,#ff8a00);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
-.logo .x-black{
-  margin-left:2px;
-  background:#000;
-  color:#fff;
-  padding:2px 6px;
-  border-radius:6px;
-  font-size:18px;
+.logo .x-black{margin-left:6px;background:var(--outline);color:var(--text);padding:4px 8px;border-radius:8px;font-size:14px;font-weight:800}
+
+/* header right actions */
+.header-actions{display:flex;gap:10px;align-items:center}
+.top-tip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--glass);cursor:pointer}
+.version-badge{font-size:13px;color:var(--muted)}
+
+/* Temp chat icon (3/4 circle) */
+.temp-chat-icon{
+  width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  border:2px solid rgba(255,255,255,0.06);background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  position:relative;font-weight:700;font-size:15px;
 }
-.top-tip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:linear-gradient(#fff,#f7f7f7);cursor:pointer}
-.app{display:flex;min-height:100vh;position:relative}
-.side{width:var(--side-w);background:linear-gradient(180deg,#08090a,#0b0b0b);border-right:1px solid var(--outline);padding:12px;overflow:auto}
-.menu-btn{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;cursor:pointer}
+.temp-chat-icon svg{width:20px;height:20px;display:block;}
+
+/* App layout */
+.app{display:flex;min-height:calc(100vh - var(--header-h));position:relative}
+.side{width:var(--side-w);background:linear-gradient(180deg,#08090a,#0b0b0b);border-right:1px solid rgba(255,255,255,0.03);padding:14px;overflow:auto}
+.menu-btn{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;cursor:pointer;background:var(--glass)}
 .main{flex:1;display:flex;flex-direction:column;position:relative}
-.center-screen{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted)}
-.chat-wrap{display:flex;flex-direction:column;gap:12px;padding:18px;max-width:900px;margin:0 auto;flex:1;overflow:auto}
-.msg{padding:12px 14px;border-radius:12px;max-width:78%;white-space:pre-wrap}
-.msg.user{background:#071326;margin-left:auto;border-top-right-radius:2px;color:#bfe}
-.msg.ai{background:linear-gradient(180deg,#0f1720,#07101a);margin-right:auto;border-top-left-radius:2px}
-.compose{padding:12px;border-top:1px solid var(--outline);display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#020203,#0b0b0b)}
+
+/* center initial screen with suggestion cards */
+.center-screen{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);padding:40px}
+.center-inner{max-width:880px;text-align:center}
+.center-title{font-size:30px;font-weight:900;margin-bottom:18px;color:var(--text)}
+.suggest-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:8px}
+.suggest-card{padding:16px;border-radius:14px;cursor:pointer;background:var(--card-bg);border:1px solid rgba(255,215,0,0.06);color:var(--text);font-weight:700;transition:all .18s ease;box-shadow:0 6px 22px rgba(0,0,0,0.25)}
+.suggest-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,0.45);outline:3px solid rgba(255,215,0,0.06)}
+.start-btn{margin-top:20px;padding:12px 22px;border-radius:999px;border:1px solid var(--outline);background:transparent;color:var(--text);cursor:pointer}
+
+/* chat area */
+.chat-wrap{display:flex;flex-direction:column;gap:12px;padding:18px;max-width:920px;margin:0 auto;flex:1;overflow:auto}
+.msg{padding:12px 16px;border-radius:14px;max-width:78%;white-space:pre-wrap;line-height:1.45}
+.msg.user{background:linear-gradient(180deg,#071326,#04101a);margin-left:auto;border-top-right-radius:6px;color:#cfe7ff;border-right:4px solid var(--accent-strong)}
+.msg.ai{background:linear-gradient(180deg,#0f1720,#07101a);margin-right:auto;border-top-left-radius:6px;color:#eef6ff;border-left:4px solid var(--accent-strong)}
+
+/* gold bubble highlight for light theme */
+html.light .msg.user{background:linear-gradient(180deg,#fff,#fbfbfb);color:var(--text);border-right:4px solid var(--accent)}
+html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(--text);border-left:4px solid var(--accent)}
+
+/* compose area */
+.compose{padding:12px;border-top:1px solid rgba(255,255,255,0.03);display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,transparent,var(--bg))}
 .compose textarea{flex:1;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:12px;color:var(--text);min-height:46px;resize:none}
-.compose button{background:var(--accent);border:none;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer;color:#000}
+.compose button{background:var(--accent-strong);border:none;padding:10px 16px;border-radius:10px;font-weight:800;cursor:pointer;color:#0a0a0a}
+
+/* history */
+.history-item{padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.02);cursor:pointer;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.history-item .meta{font-size:12px;color:var(--muted)}
+
+/* small text */
 .hint{color:var(--muted);font-size:13px;text-align:center;margin-top:8px}
-.history-item{padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.02);cursor:pointer;margin-bottom:8px}
 .small-muted{font-size:12px;color:var(--muted)}
-.modal{display:none;position:fixed;left:8%;top:12%;right:8%;bottom:12%;background:#061212;border-radius:12px;padding:18px;z-index:10030;overflow:auto;border:1px solid #142}
-@media (max-width:880px){ .side{display:none} }
+
+/* modals */
+.modal{display:none;position:fixed;left:8%;top:10%;right:8%;bottom:10%;background:var(--card-bg);border-radius:12px;padding:18px;z-index:10030;overflow:auto;border:1px solid rgba(255,255,255,0.04)}
+.modal.sm{width:420px;left:calc(50% - 210px);right:auto}
+
+/* temp chats list */
+.temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+
+/* responsive */
+@media (max-width:880px){ .side{display:none} .center-inner{padding:8px} .suggest-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))} }
 </style>
 </head>
-<body>
+<body class="dark">
 <header>
-  <div style="display:flex;gap:10px;align-items:center">
+  <div style="display:flex;gap:12px;align-items:center">
     <div class="logo">
-  <span class="fire">Zult<span class="x-black">X</span></span>
+      <span class="fire">Zult</span><span class="x-black">X</span>
     </div>
+    <div class="small-muted" style="font-weight:700">ZultX — v1.4</div>
   </div>
-  <div class="top-tip" id="topTipBtn"><span>🍏</span><strong> Tip</strong></div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <button id="lettersBtn" style="background:transparent;border:0;cursor:pointer">✉️ Letters</button>
-    <div class="small-muted">v1.3.1</div>
+
+  <div class="header-actions">
+    <div id="themeToggle" class="top-tip" title="Toggle light / dark"><span id="themeIcon">🌗</span></div>
+    <div id="topTipBtn" class="top-tip"><span>🍏</span><strong style="margin-left:6px">Tip</strong></div>
+    <div id="lettersBtn" style="padding:8px 10px;border-radius:10px;background:var(--glass);cursor:pointer">✉️ Letters</div>
+
+    <!-- temp chat 3/4 circle icon -->
+    <div id="tempChatBtn" class="temp-chat-icon" title="Temporary chats">
+      <!-- simple 3/4 circle SVG -->
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,215,0,0.06)" stroke-width="2"/>
+      </svg>
+    </div>
+
+    <div class="version-badge">v1.4</div>
   </div>
 </header>
 
 <div class="app">
   <aside class="side">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div><strong>ZultX</strong><small class="small-muted"> v1.1</small></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div><strong>ZultX</strong><div class="small-muted">Your AI Assistant</div></div>
       <div class="small-muted">USER</div>
     </div>
 
-    <h3>Your Chats</h3>
-    <div id="historyList"></div>
+    <h3 style="margin-top:6px">Your Chats</h3>
+    <div id="historyList" aria-live="polite"></div>
+
     <div style="height:12px"></div>
     <div class="menu-btn" id="newChatBtn">+ New chat</div>
-    <div style="height:20px"></div>
-    <div class="hint">Local-only lite history (saved in browser)</div>
+    <div style="height:14px"></div>
+    <div class="hint">Local history (stored in your browser). Hold / right-click an item to delete.</div>
   </aside>
 
   <main class="main">
+    <!-- center suggestion / hero -->
     <div id="centerScreen" class="center-screen">
-      <div style="text-align:center;max-width:720px">
-        <div style="font-size:28px;font-weight:800;margin-bottom:16px;color:#fff">What ZultX Can Help?</div>
-        <button id="startBtn" style="padding:12px 18px;border-radius:999px;border:1px solid var(--outline);background:transparent;color:var(--text);cursor:pointer">Ask ZultX Something New..</button>
+      <div class="center-inner">
+        <div class="center-title">What can ZultX help with?</div>
+
+        <div class="suggest-grid" id="suggestGrid">
+          <div class="suggest-card" data-q="Make a list of beautiful flowers with their meanings">🌸 List of flowers & meanings</div>
+          <div class="suggest-card" data-q="Create a loving world filled with happiness and kindness">🌍 Create a loving world</div>
+          <div class="suggest-card" data-q="Explain black holes in simple words">🕳️ Black holes explained</div>
+          <div class="suggest-card" data-q="Give me short study motivation for board exams">⚡ Motivation for exams</div>
+        </div>
+
+        <button id="startBtn" class="start-btn">Ask Something New</button>
       </div>
     </div>
 
-    <div id="chatArea" class="chat-wrap" style="display:none"></div>
+    <!-- chat area (hidden initially) -->
+    <div id="chatArea" class="chat-wrap" style="display:none" aria-live="polite"></div>
 
+    <!-- compose -->
     <div class="compose">
-      <textarea id="input" placeholder="Ask ZultX Positive.." rows="1"></textarea>
+      <textarea id="input" placeholder="Ask ZultX something positive..." rows="1" aria-label="Your message"></textarea>
       <button id="sendBtn">Send</button>
     </div>
   </main>
 </div>
 
 <!-- Letters modal -->
-<div id="lettersModal" class="modal">
+<div id="lettersModal" class="modal sm" aria-hidden="true">
   <div style="display:flex;justify-content:space-between;align-items:center">
     <h2>Letters</h2>
     <button id="closeLettersBtn">Close</button>
@@ -117,8 +207,8 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
   <pre id="modalLettersContent" style="white-space:pre-wrap;color:var(--text);margin-top:12px"></pre>
 </div>
 
-<!-- Tip modal -->
-<div id="tipModal" class="modal" style="width:420px;left:calc(50% - 210px);right:auto">
+<!-- Tip & QR modal -->
+<div id="tipModal" class="modal sm" aria-hidden="true">
   <h3>Tip ZultX</h3>
   <div style="display:flex;gap:8px;margin-top:12px">
     <button onclick="createTip(10)">₹10</button>
@@ -130,30 +220,19 @@ header{position:sticky;top:0;height:var(--header-h);display:flex;align-items:cen
   <button id="copyUpiBtn" style="margin-top:8px">Copy UPI — 9358588509@fam</button>
 </div>
 
-<!-- QR modal -->
-<div id="qrModal" class="modal" style="width:420px;left:calc(50% - 210px);right:auto;text-align:center">
-  <h3>Scan to pay (UPI) - If No Qr Shown, straight tip to 9358588509@fam</h3>
-  <div id="qrImgWrap" style="margin-top:12px"></div>
-
-<div id="upiFallback" style="display:none;margin-top:12px;color:#e8eaed">
-  <p><strong>Manual Payment:</strong></p>
-  <p class="small-muted">
-    1️⃣ Open any UPI app (GPay / PhonePe / Paytm)<br>
-    2️⃣ Choose <b>Pay via UPI ID</b><br>
-    3️⃣ Paste the UPI ID below 👇<br>
-    - 9358588509@fam
-    4️⃣ Enter amount and pay ✅
-    - Super Thanks For Support.
-  </p>
-  <div style="margin-top:8px;padding:10px;border:1px dashed #333;border-radius:8px">
-    <code id="upiText">upi://pay</code>
+<!-- Temp chats modal -->
+<div id="tempModal" class="modal" aria-hidden="true">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2>Temporary Chats</h2>
+    <button id="closeTempBtn">Close</button>
   </div>
+  <div style="margin-top:12px" class="small-muted">Temporary chats are not saved to history. Long-press or right-click to delete.</div>
+  <div id="tempList" class="temp-list"></div>
 </div>
 
 <script>
-/* ----------------- STATE ----------------- */
-  /* ----------------- CONFIG ----------------- */
-const API_BASE = "https://zultx.up.railway.app";
+/* -------------- CONFIG / STATE -------------- */
+const API_BASE = "https://zultx.up.railway.app"; // adjust if needed
 const chatArea = document.getElementById("chatArea");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
@@ -161,6 +240,7 @@ const startBtn = document.getElementById("startBtn");
 const centerScreen = document.getElementById("centerScreen");
 const historyList = document.getElementById("historyList");
 const newChatBtn = document.getElementById("newChatBtn");
+const suggestGrid = document.getElementById("suggestGrid");
 
 const lettersBtn = document.getElementById("lettersBtn");
 const lettersModal = document.getElementById("lettersModal");
@@ -170,18 +250,38 @@ const closeLettersBtn = document.getElementById("closeLettersBtn");
 const topTipBtn = document.getElementById("topTipBtn");
 const tipModal = document.getElementById("tipModal");
 const closeTipBtn = document.getElementById("closeTipBtn");
-const qrModal = document.getElementById("qrModal");
-const qrImgWrap = document.getElementById("qrImgWrap");
-const closeQrBtn = document.getElementById("closeQrBtn");
 const copyUpiBtn = document.getElementById("copyUpiBtn");
 
-let currentConversationId = null;
+const tempChatBtn = document.getElementById("tempChatBtn");
+const tempModal = document.getElementById("tempModal");
+const tempList = document.getElementById("tempList");
+const closeTempBtn = document.getElementById("closeTempBtn");
 
-/* ----------------- HISTORY ----------------- */
-function makeConvoId(){ return 'convo_' + Date.now(); }
-function refreshHistoryList(){
+const themeToggle = document.getElementById("themeToggle");
+const themeIcon = document.getElementById("themeIcon");
+
+let currentConversationId = null;
+let tempMode = false; // if true, don't save to local history
+let longPressTimer = null;
+
+/* -------------- HISTORY STORAGE -------------- */
+function makeConvoId(prefix='convo'){ return `${prefix}_${Date.now()}`; }
+
+function getAllHistory(){
   const key = 'zultx_history';
-  const all = JSON.parse(localStorage.getItem(key) || '{}');
+  try{
+    return JSON.parse(localStorage.getItem(key) || '{}');
+  }catch(e){
+    return {};
+  }
+}
+
+function setAllHistory(obj){
+  localStorage.setItem('zultx_history', JSON.stringify(obj));
+}
+
+function refreshHistoryList(){
+  const all = getAllHistory();
   const keys = Object.keys(all).sort((a,b)=> all[b].created - all[a].created);
   historyList.innerHTML = '';
   for(const k of keys){
@@ -189,30 +289,71 @@ function refreshHistoryList(){
     const el = document.createElement('div');
     el.className = 'history-item';
     const last = (item.messages && item.messages[item.messages.length-1]) || null;
-    el.innerHTML = `<div style="font-weight:700">${item.id}</div><div class="small-muted">${last? last.text.slice(0,48) : 'New chat'}</div>`;
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-weight:700">${item.id}</div><div class="meta">${last? last.text.slice(0,48) : 'New chat'}</div></div><div class="small-muted">${new Date(item.created).toLocaleString()}</div>`;
+    // click opens
     el.onclick = ()=> openConversation(k);
+    // right-click / hold to delete
+    el.oncontextmenu = (e)=> {
+      e.preventDefault();
+      confirmAndDelete(k);
+    };
+    // touch long-press support: show delete on long hold
+    let pressTimer = null;
+    el.addEventListener('touchstart', (e)=>{
+      pressTimer = setTimeout(()=> confirmAndDelete(k), 650);
+    }, {passive:true});
+    el.addEventListener('touchend', ()=> { clearTimeout(pressTimer); }, {passive:true});
     historyList.appendChild(el);
   }
 }
+
+/* save message but skip if in tempMode */
 function saveMessageToHistory(convoId, role, text){
-  const key = 'zultx_history';
-  const all = JSON.parse(localStorage.getItem(key) || '{}');
+  if(tempMode) return;
+  const all = getAllHistory();
   all[convoId] = all[convoId] || { id: convoId, created: Date.now(), messages: [] };
   all[convoId].messages.push({ role, text, t: Date.now() });
-  localStorage.setItem(key, JSON.stringify(all));
+  setAllHistory(all);
   refreshHistoryList();
 }
+
+/* load conversation */
 function loadConversation(convoId){
-  const all = JSON.parse(localStorage.getItem('zultx_history') || '{}');
+  const all = getAllHistory();
   return all[convoId] || null;
 }
+
 function localSaveInit(convoId){
-  const all = JSON.parse(localStorage.getItem('zultx_history') || '{}');
+  const all = getAllHistory();
   if(!all[convoId]) all[convoId] = { id: convoId, created: Date.now(), messages: [] };
-  localStorage.setItem('zultx_history', JSON.stringify(all));
+  setAllHistory(all);
 }
 
-/* ----------------- UI helpers ----------------- */
+/* delete chat local + optional server call */
+function confirmAndDelete(convoId){
+  if(!confirm("Delete this chat forever? This removes local history (and attempts server delete if available).")) return;
+  const all = getAllHistory();
+  if(all[convoId]) delete all[convoId];
+  setAllHistory(all);
+  refreshHistoryList();
+  // if server supports history deletion, attempt call (best-effort)
+  (async()=>{
+    try{
+      await fetch(`${API_BASE}/history/delete?id=${encodeURIComponent(convoId)}`, { method: 'DELETE' , mode:'cors' });
+    }catch(e){
+      // ignore
+    }
+    // if currently viewing it, reset UI
+    if(currentConversationId === convoId){
+      currentConversationId = null;
+      chatArea.innerHTML = '';
+      centerScreen.style.display = 'flex';
+      chatArea.style.display = 'none';
+    }
+  })();
+}
+
+/* -------------- UI helpers -------------- */
 function addBubble(kind, text){
   const d = document.createElement('div');
   d.className = 'msg ' + (kind === 'user' ? 'user' : 'ai');
@@ -224,10 +365,10 @@ function addBubble(kind, text){
 function addUserMsg(text){ addBubble('user', text); saveMessageToHistory(currentConversationId, 'user', text); }
 function addAiMsg(text){ addBubble('ai', text); saveMessageToHistory(currentConversationId, 'ai', text); }
 function addSystemMsg(text){
-  const d = document.createElement('div'); d.style.textAlign='center'; d.style.color='#9aa0a6'; d.textContent = text; chatArea.appendChild(d); chatArea.scrollTop = chatArea.scrollHeight;
+  const d = document.createElement('div'); d.style.textAlign='center'; d.style.color='var(--muted)'; d.textContent = text; chatArea.appendChild(d); chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-/* ----------------- Send message (NO STREAM) ----------------- */
+/* -------------- SEND MESSAGE (no stream) -------------- */
 async function sendMessage(){
   const text = input.value.trim();
   if(!text) return;
@@ -236,6 +377,12 @@ async function sendMessage(){
   centerScreen.style.display = 'none';
   chatArea.style.display = 'flex';
 
+  // create conversation if missing
+  if(!currentConversationId){
+    currentConversationId = makeConvoId();
+    localSaveInit(currentConversationId);
+  }
+
   addUserMsg(text);
   input.value = '';
   sendBtn.disabled = true;
@@ -243,35 +390,32 @@ async function sendMessage(){
   // insert temporary AI bubble
   const aiDiv = document.createElement('div');
   aiDiv.className = 'msg ai';
-  aiDiv.textContent = 'ZultX is thinking deep.. (For Deeper, Better, User friendly Answers)';
+  aiDiv.textContent = 'ZultX is thinking deep..';
   chatArea.appendChild(aiDiv);
+  chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" });
 
   try{
     // call non-stream endpoint; always returns JSON { answer: "..." }
-    const res = await fetch(
-  `${API_BASE}/ask?q=${encodeURIComponent(text)}`,
-  {
-    headers: { "Accept": "application/json" },
-    method: "GET"
-  }
-);
+    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, {
+      headers: { "Accept": "application/json" },
+      method: "GET",
+    });
 
     if(!res.ok){
-      aiDiv.textContent = "⚠️ Server error — Make Sure Connection Working.";
+      aiDiv.textContent = "⚠️ Server error — Make sure connection is working.";
       saveMessageToHistory(currentConversationId, 'ai', aiDiv.textContent);
       return;
     }
 
     const data = await res.json();
-    const ans = (data && data.answer) ? data.answer : "I cannot compute it safely. Is there is anything other i can help with?";
+    const ans = (data && data.answer) ? data.answer : "I cannot compute it safely. Is there anything else I can help with?";
     aiDiv.textContent = ans;
-    // already saved ai bubble in addBubble? We used addBubble earlier and saved. But ensure history saved:
-    // replace last saved AI (addBubble already saved via addAiMsg?) - we used addBubble directly, so save now:
+    // Save AI answer (if not temp)
     saveMessageToHistory(currentConversationId, 'ai', ans);
 
   } catch(err){
     console.error(err);
-    aiDiv.textContent = "⚠️ Connection failed - Make Sure Everything Is Fine.";
+    aiDiv.textContent = "⚠️ Connection failed - Check your network.";
     saveMessageToHistory(currentConversationId, 'ai', aiDiv.textContent);
   } finally {
     sendBtn.disabled = false;
@@ -279,11 +423,9 @@ async function sendMessage(){
   }
 }
 
-/* ----- bindings ----- */
-sendBtn.addEventListener('click', sendMessage);
-input.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
-
-startBtn.addEventListener('click', () => {
+/* -------------- OPEN / NEW CONVERSATION -------------- */
+startBtn.addEventListener('click', ()=> {
+  tempMode = false;
   currentConversationId = makeConvoId();
   localSaveInit(currentConversationId);
   chatArea.innerHTML = '';
@@ -293,7 +435,8 @@ startBtn.addEventListener('click', () => {
   refreshHistoryList();
 });
 
-newChatBtn.addEventListener('click', () => {
+newChatBtn.addEventListener('click', ()=> {
+  tempMode = false;
   currentConversationId = makeConvoId();
   localSaveInit(currentConversationId);
   chatArea.innerHTML = '';
@@ -304,6 +447,7 @@ newChatBtn.addEventListener('click', () => {
 });
 
 function openConversation(convoId){
+  tempMode = false;
   currentConversationId = convoId;
   const convo = loadConversation(convoId);
   chatArea.innerHTML = '';
@@ -316,7 +460,101 @@ function openConversation(convoId){
   }
 }
 
-/* ----------------- Letters / Tips UI ----------------- */
+/* -------------- SUGGESTION CARDS -------------- */
+document.querySelectorAll('.suggest-card').forEach(card=>{
+  card.onclick = ()=>{
+    const q = card.dataset.q;
+    input.value = q;
+    centerScreen.style.display='none';
+    chatArea.style.display='flex';
+    // create a temp conversation for instant suggestion (we want user to be able to save it)
+    currentConversationId = makeConvoId();
+    localSaveInit(currentConversationId);
+    sendMessage();
+  };
+});
+
+/* -------------- TEMP CHAT MODE + TEMP LIST -------------- */
+tempChatBtn.onclick = ()=>{
+  // open temp modal with list
+  populateTempList();
+  tempModal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+};
+
+closeTempBtn && (closeTempBtn.onclick = ()=>{
+  tempModal.style.display = 'none';
+  document.body.style.overflow = '';
+});
+
+function createTempConversation(){
+  tempMode = true;
+  currentConversationId = makeConvoId('temp');
+  // don't call localSaveInit for temp (we keep transient objects but we may store a lightweight snapshot in memory if desired)
+  chatArea.innerHTML = '';
+  centerScreen.style.display = 'none';
+  chatArea.style.display = 'flex';
+  addSystemMsg('Temporary chat started (will not be saved).');
+  refreshHistoryList();
+}
+
+/* build list of temp conversations stored in localStorage as those starting with 'temp_' */
+function populateTempList(){
+  tempList.innerHTML = '';
+  const all = getAllHistory();
+  const tempKeys = Object.keys(all).filter(k => k.startsWith('temp_')).sort((a,b)=> all[b].created - all[a].created);
+  // show a button to start a new temporary chat
+  const newBtn = document.createElement('div');
+  newBtn.className = 'menu-btn';
+  newBtn.textContent = '+ New temporary chat';
+  newBtn.onclick = ()=> { createTempConversation(); tempModal.style.display='none'; document.body.style.overflow=''; };
+  tempList.appendChild(newBtn);
+
+  if(tempKeys.length === 0){
+    const p = document.createElement('div'); p.className='small-muted'; p.textContent='No temporary chats found (they are not saved by default).';
+    tempList.appendChild(p);
+    return;
+  }
+
+  for(const k of tempKeys){
+    const entry = all[k];
+    const el = document.createElement('div');
+    el.className = 'temp-entry';
+    el.innerHTML = `<div style="display:flex;flex-direction:column"><strong>${entry.id}</strong><div class="small-muted">${entry.messages && entry.messages.length ? entry.messages[entry.messages.length-1].text.slice(0,60) : 'Empty'}</div></div><div style="display:flex;gap:8px"><button data-id="${k}" class="open-temp">Open</button><button data-id="${k}" class="del-temp">Delete</button></div>`;
+    tempList.appendChild(el);
+  }
+
+  // bind open + delete
+  tempList.querySelectorAll('.open-temp').forEach(btn=>{
+    btn.onclick = (e)=> {
+      const id = btn.dataset.id;
+      tempMode = true;
+      currentConversationId = id;
+      const convo = loadConversation(id);
+      chatArea.innerHTML = '';
+      centerScreen.style.display = 'none';
+      chatArea.style.display = 'flex';
+      if(convo && convo.messages) convo.messages.forEach(m=> addBubble(m.role === 'user' ? 'user' : 'ai', m.text));
+      tempModal.style.display = 'none';
+      document.body.style.overflow = '';
+    };
+  });
+  tempList.querySelectorAll('.del-temp').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      if(!confirm("Delete this temporary chat?")) return;
+      const all = getAllHistory();
+      delete all[id];
+      setAllHistory(all);
+      populateTempList();
+      refreshHistoryList();
+      // try server delete
+      try{ await fetch(`${API_BASE}/history/delete?id=${encodeURIComponent(id)}`, { method:'DELETE' }); }catch(e){}
+    };
+  });
+}
+
+/* -------------- Letters / Tips — same as before -------------- */
 lettersBtn.addEventListener('click', async ()=>{
   try{
     const res = await fetch(`${API_BASE}/letters`);
@@ -328,14 +566,24 @@ lettersBtn.addEventListener('click', async ()=>{
     const text = await r2.text();
     modalLettersContent.textContent = text;
     lettersModal.style.display = 'block';
-  }catch(e){ alert('Unable to load letters'); }
+    document.body.style.overflow = 'hidden';
+  }catch(e){ alert('Unable to load letters'); console.error(e); }
 });
-closeLettersBtn.addEventListener('click', ()=> lettersModal.style.display='none');
+closeLettersBtn.addEventListener('click', ()=> { lettersModal.style.display='none'; document.body.style.overflow=''; });
 
-topTipBtn.addEventListener('click', ()=> tipModal.style.display='block');
-closeTipBtn.addEventListener('click', ()=> tipModal.style.display='none');
+topTipBtn.addEventListener('click', ()=> { tipModal.style.display='block'; document.body.style.overflow='hidden'; });
+closeTipBtn.addEventListener('click', ()=> { tipModal.style.display='none'; document.body.style.overflow=''; });
 
+copyUpiBtn && (copyUpiBtn.onclick = async ()=> {
+  try{
+    await navigator.clipboard.writeText('9358588509@fam');
+    alert('UPI copied: 9358588509@fam');
+  }catch(e){
+    alert('Copy failed. UPI: 9358588509@fam');
+  }
+});
 
+/* createTip uses your existing backend /tip endpoint; this is safe best-effort */
 async function createTip(amount){
   try{
     const res = await fetch(`${API_BASE}/tip`, {
@@ -343,51 +591,62 @@ async function createTip(amount){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ amount })
     });
-
     const data = await res.json();
     if(!data || !data.upi_link) throw new Error("No UPI");
-
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
     if(isMobile){
-      // Try auto-open UPI
       window.location.href = data.upi_link;
-
-      // fallback message after delay
-      setTimeout(() => {
-        alert(
-          "If payment app didn’t open:\n\n" +
-          "Open GPay / PhonePe / Paytm\n" +
-          "→ Pay via UPI ID\n" +
-          "→ Paste the UPI shown"
-        );
-      }, 1500);
-
     } else {
-      // Desktop → QR + fallback
-      qrImgWrap.innerHTML = `
-        <img src="${data.qr}" style="width:280px;height:280px;border-radius:8px" />
-      `;
-
-      document.getElementById("upiFallback").style.display = "block";
-      document.getElementById("upiText").textContent = data.upi_link;
-
-      qrModal.style.display = 'block';
+      // desktop -> show QR in new window
+      window.open(data.qr, '_blank');
+      alert('Use UPI link or scan QR from the new tab.');
     }
-
-  } catch(e){
-    alert(
-      "Payment couldn’t auto-open.\n\n" +
-      "Open your UPI app → Pay via UPI ID → Paste the UPI shown."
-    );
+  }catch(e){
+    alert("Payment couldn't auto-open. Open your UPI app → Pay via UPI ID → Paste: 9358588509@fam");
   }
 }
-/* init */
+
+/* -------------- THEME TOGGLE -------------- */
+function applyInitialTheme(){
+  // prefer user's manual or system. body class controls theme (html element)
+  const saved = localStorage.getItem('zultx_theme');
+  if(saved === 'light') document.documentElement.className = 'light';
+  else if(saved === 'dark') document.documentElement.className = 'dark';
+  else {
+    // no saved -> respect system (media handled by CSS) but set class to match computed bg
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.className = prefersLight ? 'light' : 'dark';
+  }
+  updateThemeIcon();
+}
+function toggleTheme(){
+  const cur = document.documentElement.className === 'light' ? 'light' : 'dark';
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.className = next;
+  localStorage.setItem('zultx_theme', next);
+  updateThemeIcon();
+}
+function updateThemeIcon(){
+  const isLight = document.documentElement.className === 'light';
+  themeIcon.textContent = isLight ? '🌞' : '🌙';
+}
+themeToggle.onclick = toggleTheme;
+applyInitialTheme();
+
+/* -------------- BINDINGS -------------- */
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+
+/* init: ensure conversation exists */
 if(!currentConversationId){
   currentConversationId = makeConvoId();
   localSaveInit(currentConversationId);
 }
 refreshHistoryList();
+
+/* show centerScreen for first load */
+centerScreen.style.display = 'flex';
+chatArea.style.display = 'none';
 </script>
 </body>
-  </html>
+</html>
