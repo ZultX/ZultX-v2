@@ -47,7 +47,8 @@
       "format_adapter.txt",
       "brevity_depth.txt",
       "creativity_modulator.txt",
-      "philosophy.txt"
+      "philosophy.txt",
+      "teacher.txt"
     ],
 
     "performance": [
