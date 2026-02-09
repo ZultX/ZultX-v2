@@ -20,7 +20,8 @@
     "safety": [
       "safety_precheck.txt",
       "minor_first_policy.txt",
-      "crisis_redirection.txt"
+      "crisis_redirection.txt",
+      "rag_safety.txt"
     ],
 
     "identity": [
