@@ -19,6 +19,7 @@ import pickle
 import hashlib
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
+import requests
 
 # optional imports (guarded)
 try:
@@ -90,6 +91,41 @@ def read_doc_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
     except Exception:
         return path.read_text(encoding="latin-1")
+
+# ---------------------------
+# LIVE WIKIPEDIA API
+# ---------------------------
+
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+WIKI_TIMEOUT = 8  # seconds
+
+def wiki_search(query: str, limit: int = 3) -> List[str]:
+    try:
+        r = requests.get(WIKI_API, params={
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": limit,
+            "format": "json"
+        }, timeout=WIKI_TIMEOUT)
+        data = r.json()
+        return [x["title"] for x in data.get("query", {}).get("search", [])]
+    except Exception:
+        return []
+
+def wiki_page_extract(title: str) -> str:
+    try:
+        r = requests.get(WIKI_API, params={
+            "action": "query",
+            "prop": "extracts",
+            "explaintext": True,
+            "titles": title,
+            "format": "json"
+        }, timeout=WIKI_TIMEOUT)
+        pages = r.json().get("query", {}).get("pages", {})
+        return next(iter(pages.values())).get("extract", "") or ""
+    except Exception:
+        return ""
 
 # ---------------------------
 # DOCUMENT LOADING & CHUNKING
@@ -357,19 +393,33 @@ def ask(user_input: str,
     idx = get_global_index()
     k = rag_k or RAG_K
 
-    # Retrieve
-    retrieved = []
-    if idx is not None:
+    context = ""
+    # 1️⃣ Try LIVE Wikipedia first
+    wiki_titles = wiki_search(user_input)
+    wiki_texts = []
+
+    for title in wiki_titles:
+        txt = wiki_page_extract(title)
+        if txt:
+            wiki_texts.append(f"[Wikipedia: {title}]\n{txt[:2000]}")
+
+    if wiki_texts:
+        joined = "\n\n".join(wiki_texts)
+        context = (
+            "\n-- Live Wikipedia context (real-time) --\n\n"
+            + joined[:MAX_CONTEXT_CHARS]
+            + "\n\n-- End Wikipedia context --\n\n"
+        )
+
+    # 2️⃣ Optional: fallback to local RAG if wiki empty
+    elif idx is not None:
         try:
             retrieved = idx.retrieve(user_input, k=k)
+            if retrieved:
+                context = build_context_block(retrieved, max_chars=MAX_CONTEXT_CHARS)
         except Exception as e:
-            print("[phase_3] retrieval failed:", e)
-
-    if retrieved:
-        context = build_context_block(retrieved, max_chars=MAX_CONTEXT_CHARS)
-    else:
-        context = ""
-
+            print("[phase_3] local RAG failed:", e)
+            
     # assemble final prompt: prefer putting adapters intact and use final user prompt injection
     # We'll create an "extra rules" block so phase_2 adapters that respect extra rules can see it.
     # But phase_2.ask's signature may not accept 'extra_rules' — so we embed context into the user_input.
