@@ -46,7 +46,8 @@
     "style": [
       "format_adapter.txt",
       "brevity_depth.txt",
-      "creativity_modulator.txt"
+      "creativity_modulator.txt",
+      "philosophy.txt"
     ],
 
     "performance": [
