@@ -212,17 +212,20 @@ html.dark .msg.ai pre{
   color: #e5e7eb;
   border: 1px solid rgba(255,255,255,0.08);
 }
-  
-.msg.ai pre::before{
-  content: attr(data-lang);
-  position:absolute;
-  top:6px;
-  left:10px;
-  font-size:11px;
-  font-weight:800;
-  color:#ffd54a;
-  opacity:0.85;
+.msg.ai pre {
+  position: relative;
 }
+
+.msg.ai pre::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #22c55e;
+}
+  
 /* Inline code – green and readable */
 .msg.ai p code {
   background: rgba(34,197,94,0.15);
@@ -239,12 +242,6 @@ html.dark .msg.ai p code {
 }
 
 /* Let highlight.js control BLOCK code colors */
-.msg.ai pre code {
-  color: inherit;
-}
-
-
-/* Let highlight.js control colors */
 .msg.ai pre code {
   color: inherit;
 }
@@ -514,16 +511,19 @@ function fakeStream(element, fullText, speed = 15) {
 
   function type() {
     if (i < fullText.length) {
-      element.innerHTML += fullText[i];
+      element.textContent += fullText[i];
       i++;
       element.scrollIntoView({ behavior: "smooth", block: "end" });
       setTimeout(type, speed);
     } else {
-      // After stream ends → parse markdown + highlight
       element.innerHTML = marked.parse(fullText);
+
+      // highlight + copy buttons AFTER render
       element.querySelectorAll("pre code").forEach(block => {
         hljs.highlightElement(block);
       });
+
+      enhanceCodeBlocks(element);
     }
   }
 
@@ -567,22 +567,26 @@ function confirmAndDelete(convoId){
 }
 
 /* -------------- UI helpers -------------- */
-function addBubble(kind, text){
+function addBubble(kind, text, stream = true){
   const d = document.createElement('div');
   d.className = 'msg ' + (kind === 'user' ? 'user' : 'ai');
 
   if(kind === 'ai'){
-    fakeStream(d, text, 9); // 9 = typing speed
-    enhanceCodeBlocks(d);
+    if(stream){
+      fakeStream(d, text, 9);
+    } else {
+      d.innerHTML = marked.parse(text);
+      d.querySelectorAll("pre code").forEach(b => hljs.highlightElement(b));
+      enhanceCodeBlocks(d);
+    }
   } else {
     d.textContent = text;
   }
 
   chatArea.appendChild(d);
-  chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" });
-  return d;
-  }
-  
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+ 
 
 function addUserMsg(text){ addBubble('user', text); saveMessageToHistory(currentConversationId, 'user', text); }
 function addAiMsg(text){ addBubble('ai', text); saveMessageToHistory(currentConversationId, 'ai', text); }
@@ -701,7 +705,7 @@ function openConversation(convoId){
   chatArea.style.display = 'flex';
   if(convo && convo.messages){
     for(const m of convo.messages){
-      addBubble(m.role === 'user' ? 'user' : 'ai', m.text);
+      addBubble(m.role === 'user' ? 'user' : 'ai', m.text, false);
     }
   }
 }
@@ -909,14 +913,10 @@ shareBtn.onclick = async ()=>{
 /* -------------- BINDINGS -------------- */
 sendBtn.addEventListener('click', sendMessage);
 input.addEventListener("keydown", (e) => {
-  // ENTER = new line
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
-    input.value += "\n";
+    sendMessage(); // SEND
   }
-});
-form.addEventListener("submit", e => {
-  e.preventDefault();
 });
 
 
