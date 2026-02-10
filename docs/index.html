@@ -238,12 +238,28 @@ html.dark .msg.ai p code{
   color: #ffd54a;
 }
 
+/* Let highlight.js control colors */
+.msg.ai pre code {
+  color: inherit;
+}
 
-  
-.msg.ai code {
-  font-family: monospace;
+/* Inline code ONLY (not blocks) */
+.msg.ai p code {
+  background: rgba(255,215,0,0.12);
+  color: #b45309;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+
+/* Dark mode inline */
+html.dark .msg.ai p code {
+  background: rgba(255,193,7,0.25);
   color: #ffd54a;
 }
+
+  
+
 .msg.ai table {
   background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
   border-radius: 12px;
