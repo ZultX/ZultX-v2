@@ -90,6 +90,9 @@ header{
 .header-actions{display:flex;gap:10px;align-items:center}
 .top-tip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--glass);cursor:pointer}
 .version-badge{font-size:13px;color:var(--muted)}
+html.dark header{
+  background: rgba(15,23,32,0.78);
+}
 
 /* Temp chat icon (3/4 circle) */
 .temp-chat-icon{
@@ -116,7 +119,16 @@ header{
 
 /* chat area */
 .chat-wrap{display:flex;flex-direction:column;gap:12px;padding:18px;max-width:920px;margin:0 auto;flex:1;overflow:auto}
-.msg{padding:12px 16px;border-radius:14px;max-width:78%;white-space:pre-wrap;line-height:1.45}
+.msg{
+  padding:12px 16px;
+  border-radius:14px;
+  max-width:78%;
+  line-height:1.45;
+}
+.msg.user{
+  white-space: pre-wrap;
+}
+
 .msg.user{background:linear-gradient(180deg,#071326,#04101a);margin-left:auto;border-top-right-radius:6px;color:#cfe7ff;border-right:4px solid var(--accent-strong)}
 .msg.ai{background:linear-gradient(180deg,#0f1720,#07101a);margin-right:auto;border-top-left-radius:6px;color:#eef6ff;border-left:4px solid var(--accent-strong)}
 
@@ -190,12 +202,60 @@ html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(
   overflow-x: auto;
   border: 1px solid rgba(255,255,255,0.08);
 }
+.msg.ai pre::before{
+  content: attr(data-lang);
+  position:absolute;
+  top:6px;
+  left:10px;
+  font-size:11px;
+  font-weight:800;
+  color:#ffd54a;
+  opacity:0.85;
+}
 
+  
 .msg.ai code {
   font-family: monospace;
   color: #ffd54a;
 }
+.msg.ai table {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+  border-radius: 12px;
+  overflow: hidden;
+}
 
+.msg.ai tr:nth-child(even) td {
+  background: rgba(255,255,255,0.02);
+}
+
+.msg.ai tr:hover td {
+  background: rgba(255,215,0,0.06);
+}
+.msg.ai blockquote{
+  border-left:4px solid var(--accent);
+  padding:10px 14px;
+  margin:12px 0;
+  background: rgba(255,215,0,0.06);
+  border-radius:10px;
+  font-style:italic;
+}
+.msg.ai ul, .msg.ai ol{
+  padding-left:22px;
+  margin:10px 0;
+}
+
+.msg.ai li{
+  margin:6px 0;
+}
+
+.msg.ai p code{
+  background: rgba(255,215,0,0.12);
+  padding:2px 6px;
+  border-radius:6px;
+  font-size:0.95em;
+}
+
+  
 /* Copy button */
 .copy-btn {
   position: absolute;
@@ -217,6 +277,15 @@ html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(
 @media (max-width:880px){ .side{display:none} .center-inner{padding:8px} .suggest-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))} }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  marked.setOptions({
+    gfm: true,        // GitHub-style markdown (tables, task lists)
+    breaks: true,    // Line breaks without double enter
+    smartLists: true,
+    smartypants: true
+  });
+</script>
+
 </head>
 <body class="dark">
 <header>
@@ -232,7 +301,6 @@ html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(
     <div id="topTipBtn" class="top-tip"><span>🍏</span><strong style="margin-left:6px">Tip</strong></div>
     <div id="lettersBtn" style="padding:8px 10px;border-radius:10px;background:var(--glass);cursor:pointer">✉️ Letters</div>
     <div id="shareBtn" class="top-tip" title="Share ZultX"><span>🔗</span><strong style="margin-left:6px">Share</strong></div>
-}
 
 
     <!-- temp chat 3/4 circle icon -->
@@ -472,24 +540,29 @@ function addSystemMsg(text){
 }
 function enhanceCodeBlocks(container){
   container.querySelectorAll('pre code').forEach(block => {
-    const pre = block.parentElement;
-    if(pre.classList.contains('code-enhanced')) return;
-    pre.classList.add('code-enhanced');
+  const pre = block.parentElement;
+  if(pre.classList.contains('code-enhanced')) return;
+  pre.classList.add('code-enhanced');
 
-    const btn = document.createElement('button');
-    btn.textContent = 'Copy';
-    btn.className = 'copy-btn';
+  // detect language from markdown ```lang
+  const className = block.className || '';
+  const match = className.match(/language-(\w+)/);
+  pre.setAttribute('data-lang', match ? match[1].toUpperCase() : 'CODE');
 
-    btn.onclick = () => {
-      navigator.clipboard.writeText(block.innerText);
-      btn.textContent = 'Copied ✅';
-      setTimeout(() => btn.textContent = 'Copy', 1500);
-    };
+  const btn = document.createElement('button');
+  btn.textContent = 'Copy';
+  btn.className = 'copy-btn';
 
-    pre.style.position = 'relative';
-    pre.appendChild(btn);
-  });
-  }
+  btn.onclick = () => {
+    navigator.clipboard.writeText(block.innerText);
+    btn.textContent = 'Copied ✅';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  };
+
+  pre.style.position = 'relative';
+  pre.appendChild(btn);
+});
+}
   
 /* -------------- SEND MESSAGE (no stream) -------------- */
 async function sendMessage(){
@@ -532,7 +605,8 @@ async function sendMessage(){
 
     const data = await res.json();
     const ans = (data && data.answer) ? data.answer : "I cannot compute it safely. Is there anything else I can help with?";
-    aiDiv.textContent = ans;
+    aiDiv.innerHTML = marked.parse(ans);
+    enhanceCodeBlocks(aiDiv);
     // Save AI answer (if not temp)
     saveMessageToHistory(currentConversationId, 'ai', ans);
 
