@@ -36,15 +36,15 @@ os.makedirs("feedback", exist_ok=True)
 os.makedirs("tips", exist_ok=True)
 
 # Create a sample letter if none exists
-example_path = os.path.join(LETTERS_DIR, "example.txt")
+example_path = os.path.join(LETTERS_DIR, "real.txt")
 if not os.path.exists(example_path):
     with open(example_path, "w", encoding="utf-8") as f:
-        f.write("HEY!\nIf you like ZultX, so do not forget to TIP zultx.\nTip wil make more updates, faster and better zultx (also my confidence)\nThis is starting of zultx. I wish you will like it.\nIf you have any problem or complain, please mail to 'zultx.service@gmail.com'\nWith love,\nAura Sharma (hardik)\n13\nZultX-Owner.")
+        f.write("HEY!\n\nIf you have any complain kindly mail to 'zultx.service@gmail.com'\n\nIf you like ZultX wanna support it!\n\nWith love,\nAura Sharma\n13\nZultX-Owner.")
 
 # Default UPI (safe placeholder)
 UPI_ID = os.getenv("UPI_ID", "9358588509@fam")
 
-app = FastAPI(title="ZULTX — v1.1")
+app = FastAPI(title="ZULTX — v1.4")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # serve static if present (optional)
@@ -240,7 +240,7 @@ def tip(payload: dict = Body(...)):
     except Exception:
         pass
 
-    return JSONResponse({"ok": True, "order": order, "upi_link": upi_uri, "qr": qr_url, "note": "Use UPI link or scan QR to pay."})
+    return JSONResponse({"ok": True, "order": order, "upi_link": upi_uri, "qr": qr_url, "note": "Use UPI link or scan QR to pay or Straight to 9358588509@fam."})
 
 
 @app.post("/tip/confirm")
