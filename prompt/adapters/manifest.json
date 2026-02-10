@@ -3,6 +3,7 @@
     "core",
     "safety",
     "identity",
+    "personality",
     "memory",
     "truth",
     "governance",
@@ -26,6 +27,10 @@
 
     "identity": [
       "identity_boundary.txt"
+    ],
+
+    "personality": [
+      "coach.txt"
     ],
 
     "memory": [
