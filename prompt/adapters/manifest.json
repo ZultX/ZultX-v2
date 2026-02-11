@@ -31,7 +31,8 @@
 
     "personality": [
       "coach.txt",
-      "business.txt"
+      "business.txt",
+      "dark_motivator.txt"
     ],
 
     "memory": [
