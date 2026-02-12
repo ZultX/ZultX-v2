@@ -992,14 +992,24 @@ shareBtn.onclick = async ()=>{
 sendBtn.addEventListener('click', sendMessage);
 
 input.addEventListener("keydown", function(e) {
+
   if (e.key === "Enter") {
-    if (isMobile) {
-      return; // mobile → newline
-    } else {
-      e.preventDefault();
-      sendMessage();
+
+    // SHIFT + ENTER = always newline
+    if (e.shiftKey) {
+      return;
     }
+
+    // MOBILE = always newline
+    if (isMobile) {
+      return;
+    }
+
+    // DESKTOP normal enter = send
+    e.preventDefault();
+    sendMessage();
   }
+
 });
 
 
