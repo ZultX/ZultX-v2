@@ -966,7 +966,7 @@ const shareBtn = document.getElementById('shareBtn');
 shareBtn.onclick = async ()=>{
   const shareData = {
     title: 'ZultX AI',
-    text: 'ZultX — Fast, Positive, Experimental AI. Try it now.',
+    text: 'ZultX — Fast, Adaptive Reasoning Ai.Try it now.',
     url: 'https://zultx.github.io/ZultX-v2/'
   };
 
@@ -990,15 +990,25 @@ shareBtn.onclick = async ()=>{
 
 /* -------------- BINDINGS -------------- */
 sendBtn.addEventListener('click', sendMessage);
+const input = document.getElementById("userInput");
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
 input.addEventListener("keydown", function(e) {
 
-    if (!isMobile && e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    } 
-  });
+    if (isMobile) {
+        // On mobile → Enter makes new line
+        if (e.key === "Enter") {
+            return; 
+        }
+    } else {
+        // On desktop → Enter sends
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    }
+
+});
 
 /* init: ensure conversation exists */
 if(!currentConversationId){
