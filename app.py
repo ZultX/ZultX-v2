@@ -51,7 +51,7 @@ except Exception:
 BASE_DIR = os.getcwd()
 USERS_DB = os.getenv("ZULTX_USERS_DB", "users.db")
 LETTERS_DIR = os.getenv("ZULTX_LETTERS_DIR", "letters")
-JWT_SECRET = os.getenv("ZULTX_JWT_SECRET", "please-change-this-to-a-strong-secret")
+JWT_SECRET = os.getenv("ZULTX_JWT_SECRET", "dev-secret")
 JWT_EXP_SECONDS = int(os.getenv("ZULTX_JWT_EXP_SECONDS", 60 * 60 * 24 * 7))  # 7 days
 
 # Ensure folders
