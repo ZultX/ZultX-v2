@@ -291,7 +291,48 @@ html.dark .msg.ai p code {
   border-radius: 8px;
   cursor: pointer;
   }
-  
+
+/* Premium full-screen modal (golden) */
+.premium-modal {
+  display:none;
+  position:fixed;
+  inset:0;
+  background: linear-gradient(180deg, rgba(12,8,6,0.94), rgba(16,12,10,0.96));
+  z-index:12000;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+  backdrop-filter: blur(8px);
+}
+.premium-card {
+  width:100%;
+  max-width:920px;
+  border-radius:18px;
+  padding:28px;
+  background: linear-gradient(180deg, rgba(255,250,240,0.03), rgba(255,244,200,0.02));
+  border: 1px solid rgba(255,215,0,0.18);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 2px 12px rgba(255,215,0,0.04) inset;
+  color: var(--text);
+}
+.premium-header { display:flex;justify-content:space-between;align-items:center;gap:12px; }
+.premium-title { font-size:28px;font-weight:900;color:var(--accent-strong); }
+.premium-sub { color:var(--muted); font-size:14px; }
+
+/* form */
+.premium-form { margin-top:18px; display:flex;flex-direction:column; gap:12px; }
+.premium-form input { padding:12px;border-radius:10px;border:1px solid rgba(255,215,0,0.06); background: rgba(0,0,0,0.45); color:var(--text); }
+.premium-actions { display:flex; gap:10px; margin-top:10px; align-items:center; }
+
+/* eye toggle button */
+.pw-eye { background:transparent;border:none;color:var(--accent-strong); cursor:pointer; padding:8px;border-radius:8px; }
+
+/* left-panel account line styling */
+.side .account-row { padding:8px 10px; margin-bottom:12px; display:flex;justify-content:space-between;align-items:center; border-radius:8px; background:rgba(255,255,255,0.01); }
+.account-btn { padding:8px 12px; border-radius:999px; cursor:pointer; font-weight:800; }
+.account-btn.login { background: #0f7f3e; color: #fff; border:1px solid rgba(255,255,255,0.04); }
+.account-btn.logout { background: #7a1f1f; color:#fff; border:1px solid rgba(255,255,255,0.04); }
+.account-welcome { color: var(--muted); font-size:13px; }
+
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -937,204 +978,168 @@ centerScreen.style.display = 'flex';
 chatArea.style.display = 'none';
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<!-- GREEN-PROTOCOL MODAL + AUTH JS (paste at end of <body> near other scripts) -->
-<!-- AUTH MODALS -->
-<div id="authModal" class="modal sm" aria-hidden="true" style="display:none;">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <h2 id="authTitle">Login</h2>
-    <button id="authCloseBtn">Close</button>
-  </div>
-  <div style="margin-top:12px">
-    <div id="authMsg" class="small-muted"></div>
-    <div style="margin-top:8px">
-      <input id="authUsername" placeholder="username" style="width:100%;padding:10px;border-radius:8px;margin-bottom:8px"/>
-      <input id="authEmail" placeholder="email (signup only)" style="width:100%;padding:10px;border-radius:8px;margin-bottom:8px;display:none"/>
-      <input id="authPassword" type="password" placeholder="password" style="width:100%;padding:10px;border-radius:8px;margin-bottom:8px"/>
-      <div style="display:flex;gap:8px">
-        <button id="authSubmitBtn">Login</button>
-        <button id="authToggleModeBtn">Switch to Signup</button>
-        <button id="guestBtn" title="Try without login">Try without login</button>
+
+<!-- PREMIUM FULLSCREEN AUTH MODAL -->
+<div id="premiumAuth" class="premium-modal" aria-hidden="true">
+  <div class="premium-card" role="dialog" aria-modal="true">
+    <div class="premium-header">
+      <div>
+        <div class="premium-title">ZultX — Account Access</div>
+        <div class="premium-sub">Sign up or login to unlock saved memories & preferences. Try free without signup.</div>
       </div>
+      <div>
+        <button id="premiumClose" class="menu-btn">Close</button>
+      </div>
+    </div>
+
+    <div class="premium-form" id="premiumFormArea">
+      <input id="p_username" placeholder="Username" />
+      <input id="p_email" placeholder="Email (signup only)" style="display:none;" />
+      <div style="position:relative; display:flex; gap:8px; align-items:center;">
+        <input id="p_password" type="password" placeholder="Password" style="flex:1;" />
+        <button id="p_eye" class="pw-eye" title="Show/Hide password">👁️</button>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <button id="p_submit" class="menu-btn">Login</button>
+        <button id="p_toggle" class="menu-btn">Switch to Signup</button>
+        <button id="p_guest" class="menu-btn" title="Try without login">Try without login</button>
+        <div id="p_msg" class="small-muted" style="margin-left:8px"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;color:var(--muted);font-size:13px">
+      <strong>Note:</strong> Username must be unique. Password is hidden by default — use the eye button to preview.
     </div>
   </div>
 </div>
 
 <script>
-/* AUTH + SESSION helper for GREEN PROTOCOL */
-const AUTH_MODAL = document.getElementById('authModal');
-const AUTH_TITLE = document.getElementById('authTitle');
-const AUTH_CLOSE = document.getElementById('authCloseBtn');
-const AUTH_MSG = document.getElementById('authMsg');
-const AUTH_USER = document.getElementById('authUsername');
-const AUTH_EMAIL = document.getElementById('authEmail');
-const AUTH_PASS = document.getElementById('authPassword');
-const AUTH_SUBMIT = document.getElementById('authSubmitBtn');
-const AUTH_TOGGLE = document.getElementById('authToggleModeBtn');
-const GUEST_BTN = document.getElementById('guestBtn');
+/* PREMIUM AUTH JS (replace previous auth handlers) */
+const PREMIUM_AUTH = document.getElementById('premiumAuth');
+const P_CLOSE = document.getElementById('premiumClose');
+const P_USERNAME = document.getElementById('p_username');
+const P_EMAIL = document.getElementById('p_email');
+const P_PASSWORD = document.getElementById('p_password');
+const P_SUBMIT = document.getElementById('p_submit');
+const P_TOGGLE = document.getElementById('p_toggle');
+const P_GUEST = document.getElementById('p_guest');
+const P_EYE = document.getElementById('p_eye');
+const P_MSG = document.getElementById('p_msg');
 
-let authMode = 'login'; // or 'signup'
+let premiumMode = 'login'; // login | signup
 
-function ensureSessionId(){
-  let sid = localStorage.getItem('zultx_session');
-  if(!sid){
-    sid = 'sess_' + Math.random().toString(36).slice(2) + '_' + Date.now();
-    localStorage.setItem('zultx_session', sid);
-  }
-  return sid;
-}
-ensureSessionId();
-
-function openAuth(mode='login'){
-  authMode = mode;
-  AUTH_MODAL.style.display = 'block';
+function openPremium(mode='login'){
+  premiumMode = mode;
+  P_EMAIL.style.display = mode === 'signup' ? 'block' : 'none';
+  P_SUBMIT.textContent = mode === 'signup' ? 'Create account' : 'Login';
+  P_TOGGLE.textContent = mode === 'signup' ? 'Switch to Login' : 'Switch to Signup';
+  P_MSG.textContent = '';
+  P_USERNAME.value = '';
+  P_PASSWORD.value = '';
+  PREMIUM_AUTH.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  AUTH_MSG.textContent = '';
-  AUTH_USER.value = '';
-  AUTH_PASS.value = '';
-  AUTH_EMAIL.style.display = mode === 'signup' ? 'block' : 'none';
-  AUTH_TITLE.textContent = mode === 'signup' ? 'Sign up' : 'Login';
-  AUTH_SUBMIT.textContent = mode === 'signup' ? 'Create account' : 'Login';
-  AUTH_TOGGLE.textContent = mode === 'signup' ? 'Switch to Login' : 'Switch to Signup';
+}
+function closePremium(){ PREMIUM_AUTH.style.display = 'none'; document.body.style.overflow = ''; }
+
+P_CLOSE.onclick = closePremium;
+P_TOGGLE.onclick = () => openPremium(premiumMode === 'signup' ? 'login' : 'signup');
+P_GUEST.onclick = () => { ensureSessionId(); closePremium(); alert('Guest session active.'); };
+
+P_EYE.onclick = () => {
+  if(P_PASSWORD.type === 'password'){ P_PASSWORD.type = 'text'; P_EYE.textContent = '🙈'; }
+  else { P_PASSWORD.type = 'password'; P_EYE.textContent = '👁️'; }
 }
 
-function closeAuth(){
-  AUTH_MODAL.style.display = 'none';
-  document.body.style.overflow = '';
+// check username availability (signup)
+async function checkUsernameAvailable(un){
+  try{
+    const r = await fetch(`${API_BASE}/check_username?username=${encodeURIComponent(un)}`);
+    if(!r.ok) return false;
+    const d = await r.json();
+    return !!d.available;
+  }catch(e){ return false; }
 }
 
-AUTH_CLOSE.onclick = closeAuth;
-AUTH_TOGGLE.onclick = ()=> openAuth(authMode === 'signup' ? 'login' : 'signup');
-GUEST_BTN.onclick = ()=> {
-  // Try without login - just ensure session is present and close
-  ensureSessionId();
-  closeAuth();
-  alert('You can try ZultX without login. Remember your browser session to keep guest memories.');
-};
+P_SUBMIT.onclick = async () => {
+  const u = P_USERNAME.value.trim();
+  const p = P_PASSWORD.value;
+  const e = P_EMAIL.value.trim();
 
-// show small auth button in header (create if missing)
-(function addAuthHeaderBtn(){
-  const headerActions = document.querySelector('.header-actions');
-  if(!headerActions) return;
-  const authBtn = document.createElement('div');
-  authBtn.id = 'authBtn';
-  authBtn.className = 'top-tip';
-  authBtn.style.cursor = 'pointer';
-  authBtn.textContent = 'Login';
-  authBtn.onclick = ()=> openAuth('login');
-  headerActions.insertBefore(authBtn, headerActions.firstChild);
-})();
+  if(!u || !p){ P_MSG.textContent = 'username & password required'; return; }
 
-// token helpers
-function setToken(token){
-  if(token) localStorage.setItem('zultx_token', token);
-  else localStorage.removeItem('zultx_token');
-  updateAuthUI();
-}
-function getToken(){ return localStorage.getItem('zultx_token'); }
-function loggedIn(){ return !!getToken(); }
-
-function updateAuthUI(){
-  const btn = document.getElementById('authBtn');
-  if(!btn) return;
-  if(loggedIn()){
-    btn.textContent = 'Account';
-  } else {
-    btn.textContent = 'Login';
+  if(premiumMode === 'signup'){
+    // unique username check
+    P_MSG.textContent = 'Checking availability...';
+    const ok = await checkUsernameAvailable(u);
+    if(!ok){ P_MSG.textContent = 'Username not available'; return; }
   }
-}
-updateAuthUI();
 
-// submit login/signup
-AUTH_SUBMIT.onclick = async ()=>{
-  const u = AUTH_USER.value.trim();
-  const p = AUTH_PASS.value;
-  const e = AUTH_EMAIL.value.trim();
-  if(!u || !p){ AUTH_MSG.textContent = 'username & password required'; return; }
-
-  const url = authMode === 'signup' ? `${API_BASE}/signup` : `${API_BASE}/login`;
-  const body = authMode === 'signup' ? { username: u, password: p, email: e } : { username: u, password: p };
+  P_MSG.textContent = 'Contacting server...';
+  const url = premiumMode === 'signup' ? `${API_BASE}/signup` : `${API_BASE}/login`;
+  const body = premiumMode === 'signup' ? { username: u, password: p, email: e } : { username: u, password: p };
 
   try{
     const res = await fetch(url, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body),
-      mode: 'cors'
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if(!res.ok || !data.ok){
-      AUTH_MSG.textContent = data.error || 'Auth failed';
+      P_MSG.textContent = data.error || 'Auth failed';
       return;
     }
+    // store token & update UI
     setToken(data.token);
-    AUTH_MSG.textContent = '';
-    closeAuth();
-    alert('Logged in as ' + (data.user && data.user.username ? data.user.username : 'you'));
+    P_MSG.textContent = '';
+    closePremium();
+    refreshAccountUI();
+    alert('Welcome, ' + (data.user.username || 'you') + ' — logged in!');
   }catch(err){
     console.error(err);
-    AUTH_MSG.textContent = 'Network error';
+    P_MSG.textContent = 'Network error';
   }
 };
 
-// update sendMessage to attach auth & session headers
-const ORIGINAL_sendMessage = window.sendMessage;
-window.sendMessage = async function patchedSendMessage(){
-  // same flow, but we will attach Authorization + X-Session-Id
-  const text = input.value.trim();
-  if(!text) return;
-
-  centerScreen.style.display = 'none';
-  chatArea.style.display = 'flex';
-
-  if(!currentConversationId){
-    currentConversationId = makeConvoId();
-    localSaveInit(currentConversationId);
-  }
-
-  addUserMsg(text);
-  input.value = '';
-  sendBtn.disabled = true;
-
-  const aiDiv = document.createElement('div');
-  aiDiv.className = 'msg ai';
-  aiDiv.textContent = 'ZultX is thinking deep..';
-  chatArea.appendChild(aiDiv);
-  chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: "smooth" });
-
-  try{
-    const sid = ensureSessionId();
-    const token = getToken();
-    const headers = { "Accept":"application/json" };
-    if(token) headers["Authorization"] = "Bearer " + token;
-    // also provide X-Session-Id so server can bind conversation buffer even for logged-in users
-    headers["X-Session-Id"] = sid;
-
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}&session_id=${encodeURIComponent(sid)}`, {
-      method: "GET",
-      headers,
-      mode: 'cors'
-    });
-
-    if(!res.ok){
-      aiDiv.textContent = "⚠️ Server error — Make sure connection is working.";
-      saveMessageToHistory(currentConversationId, 'ai', aiDiv.textContent);
-      return;
+/* Left side account row creation & behavior */
+(function addLeftAccountRow(){
+  const side = document.querySelector('.side');
+  if(!side) return;
+  const row = document.createElement('div');
+  row.className = 'account-row';
+  row.innerHTML = `<div><div style="font-weight:800">Account</div><div class="account-welcome" id="accWelcome">Not signed in</div></div><div><button id="accBtn" class="account-btn login">Login</button></div>`;
+  side.insertBefore(row, side.firstChild);
+  // bind click
+  document.getElementById('accBtn').onclick = () => {
+    if(loggedIn()){
+      if(confirm("Log out?")) {
+        setToken(null);
+        refreshAccountUI();
+        alert('Logged out');
+      }
+    } else {
+      openPremium('login');
     }
+  };
+})();
 
-    const data = await res.json();
-    const ans = (data && data.answer) ? data.answer : "I cannot compute it safely. Is there anything else I can help with?";
-    fakeStream(aiDiv, ans, 9);
-    saveMessageToHistory(currentConversationId, 'ai', ans);
-  }catch(err){
-    console.error(err);
-    aiDiv.textContent = "⚠️ Connection failed - Check your network.";
-    saveMessageToHistory(currentConversationId, 'ai', aiDiv.textContent);
-  } finally {
-    sendBtn.disabled = false;
-    refreshHistoryList();
+function refreshAccountUI(){
+  const btn = document.getElementById('accBtn');
+  const welcome = document.getElementById('accWelcome');
+  if(!btn || !welcome) return;
+  if(loggedIn()){
+    btn.classList.remove('login'); btn.classList.add('logout');
+    btn.textContent = 'Logout';
+    // fetch some user info optionally if backend supports /me (not implemented here)
+    welcome.textContent = 'Welcome — signed in';
+  } else {
+    btn.classList.add('login'); btn.classList.remove('logout');
+    btn.textContent = 'Login';
+    welcome.textContent = 'Not signed in';
   }
-};
+}
+refreshAccountUI();
 </script>
-
 </body>
 </html>
