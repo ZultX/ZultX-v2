@@ -80,31 +80,31 @@ def local_fallback_ask_plain(user_input: str, mode: str = "friend", temperature:
 
 # Utility to consume different result shapes into a single string answer
 async def normalize_result_to_text(result: Any) -> str:
-    # If result is None -> fallback
     if result is None:
         return local_fallback_ask_plain("")
 
-    # If result is a coroutine (awaitable), await it
     if asyncio.iscoroutine(result):
         try:
             result = await result
         except Exception:
-            # if awaiting fails, fallback to string
             return str(result)
 
-    # If result is an async generator
+    # 🔥 MOVE THIS BLOCK UP FIRST
+    if isinstance(result, dict) and "answer" in result:
+        return str(result.get("answer") or "")
+
+    # Async generator
     if hasattr(result, "__aiter__"):
         parts = []
         try:
             async for p in result:
                 parts.append(str(p))
         except Exception:
-            # best-effort
             pass
         return "".join(parts)
 
-    # If result is a regular generator or iterable (but not string)
-    if hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
+    # Regular generator (NOT dict)
+    if hasattr(result, "__iter__") and not isinstance(result, (str, bytes, dict)):
         parts = []
         try:
             for p in result:
@@ -113,11 +113,6 @@ async def normalize_result_to_text(result: Any) -> str:
             pass
         return "".join(parts)
 
-    # If it's a dict with 'answer' field, prefer it
-    if isinstance(result, dict) and "answer" in result:
-        return str(result.get("answer") or "")
-
-    # final fallback to str
     return str(result)
 
 
