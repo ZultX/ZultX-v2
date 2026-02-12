@@ -990,17 +990,19 @@ shareBtn.onclick = async ()=>{
 
 /* -------------- BINDINGS -------------- */
 sendBtn.addEventListener('click', sendMessage);
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    if (isMobile) {
-      // 📱 MOBILE → allow newline
-      return;
+input.addEventListener("keydown", function(e) {
+
+    // If user presses Enter WITHOUT Shift → send
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
     }
 
-    // 💻 PC → send (keep your old behavior)
-    e.preventDefault();
-    sendMessage();
-  }
+    // If user presses Shift + Enter → new line
+    if (e.key === "Enter" && e.shiftKey) {
+        // default behavior = new line
+        return;
+    }
 });
 
 /* init: ensure conversation exists */
