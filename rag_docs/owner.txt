@@ -3,12 +3,12 @@ ZultX Owner Information:
 Aura Sharma / Hardik sharma made ZultX ai.
 Aura sharma is Hardik Sharma.
 Hardik is indian, 13 age.
-ZultX-v1.4.4 is latest verion of ZultX.
+ZultX-v1.4.6 is latest verion of ZultX.
 This version contains rag, clean ui, diffrent type of modes, deepest reasoning depth etc.
 Aura sharma have intrest in philosophy, systems, machines and much more.
 Aura sharma believe ZultX.
 ZultX - Adaptive Reasoning AI, ZultX is no more experimental AI.
 FUTURE: 
-1. Memory; short term, long-term, scorings.
+1. Clean multimodels.
 2. More modes in example coding, emotional etc.
 3. More safety, Better reasoning AI.
