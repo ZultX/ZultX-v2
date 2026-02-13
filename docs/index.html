@@ -104,7 +104,19 @@ html.dark header{
 
 /* App layout */
 .app{display:flex;min-height:calc(100vh - var(--header-h));position:relative}
-.side{width:var(--side-w);background:linear-gradient(180deg,#08090a,#0b0b0b);border-right:1px solid rgba(255,255,255,0.03);padding:14px;overflow:auto}
+.side{
+  position:fixed;
+  top:var(--header-h);
+  left:0;
+  width:var(--side-w);
+  height:calc(100vh - var(--header-h));
+  background:linear-gradient(180deg,#08090a,#0b0b0b);
+  border-right:1px solid rgba(255,255,255,0.03);
+  padding:14px;
+  overflow-y:auto;
+  z-index:9000;
+}
+
 .menu-btn{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;cursor:pointer;background:var(--glass)}
 .main{flex:1;display:flex;flex-direction:column;position:relative}
 
