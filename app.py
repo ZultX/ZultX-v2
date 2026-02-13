@@ -339,6 +339,70 @@ def tip(payload: dict = Body(...)):
 
     return JSONResponse({"ok": True, "order": order, "upi_link": upi_uri, "qr": qr_url})
 
+@app.get("/health/providers")
+def test_providers():
+    results = {}
+
+    # OpenAI
+    try:
+        import requests, os
+        r = requests.get(
+            "https://api.openai.com/v1/models",
+            headers={"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"}
+        )
+        results["openai"] = r.status_code == 200
+    except:
+        results["openai"] = False
+
+    # Mistral
+    try:
+        r = requests.get(
+            "https://api.mistral.ai/v1/models",
+            headers={"Authorization": f"Bearer {os.getenv('MISTRAL_API_KEY')}"}
+        )
+        results["mistral"] = r.status_code == 200
+    except:
+        results["mistral"] = False
+
+    # Anthropic
+    try:
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+                "anthropic-version": "2023-06-01"
+            },
+            json={"model":"claude-3-haiku-20240307","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}
+        )
+        results["anthropic"] = r.status_code == 200
+    except:
+        results["anthropic"] = False
+
+    # Google Gemini
+    try:
+        key = os.getenv("GOOGLE_API_KEY")
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key={key}",
+            json={"prompt":{"text":"hi"}}
+        )
+        results["gemini"] = r.status_code == 200
+    except:
+        results["gemini"] = False
+
+    return results
+
+@app.get("/health/pinecone")
+def test_pinecone():
+    import os
+    from pinecone import Pinecone
+
+    try:
+        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+        indexes = pc.list_indexes()
+        return {"connected": True, "indexes": indexes}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
 # -------------------------
 # Helper: determine requester identity (JWT or guest session)
 # -------------------------
