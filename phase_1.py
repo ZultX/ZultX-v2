@@ -225,7 +225,7 @@ class GoogleGeminiAdapter(ModelAdapter):
             raise ModelFailure("rate_limited")
         # choose model via env
         gmodel = os.getenv("GOOGLE_GEMINI_MODEL","gemini-pro")
-        url = f"{self.endpoint}/{gmodel}:generateText?key={self.api_key}"
+        url = f"{self.endpoint}/{gmodel}:generateContent?key={self.api_key}"
         payload = {"prompt": {"text": prompt}}
         try:
             r = requests.post(url, json=payload, timeout=timeout)
@@ -250,7 +250,7 @@ class AnthropicAdapter(ModelAdapter):
     def __init__(self, api_key: Optional[str]):
         super().__init__()
         self.api_key = api_key
-        self.endpoint = "https://api.anthropic.com/v1/complete"
+        self.endpoint = "https://api.anthropic.com/v1/messages"
 
     def check_ready(self):
         return bool(self.api_key)
