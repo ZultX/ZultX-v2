@@ -4,6 +4,6 @@ requests
 python-multipart
 pinecone-client
 psycopg2-binary
-pinecone-client
+pinecone
 openai
 scikit-learn
