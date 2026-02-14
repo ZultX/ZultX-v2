@@ -2,8 +2,5 @@ fastapi
 uvicorn[standard]
 requests
 psycopg2-binary
-scikit-learn
-numpy
-sentence-transformers
 openai==0.28.1
 pinecone-client==2.2.4
