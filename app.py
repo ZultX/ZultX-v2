@@ -37,13 +37,7 @@ try:
     ASK_FUNC = ask_func
     print("[ZULTX] Using phase_4.phase4_ask")
 except Exception:
-    try:
-        from phase_3 import ask as ask_func
-        ASK_FUNC = ask_func
-        print("[ZULTX] Using phase_3.ask")
-    except Exception as e:
-        print("[ZULTX] No phase_3/phase_4 ask() found, using internal fallback. Error:", e)
-        ASK_FUNC = None
+    print("ERROR:", Exception)
 
 # -------------------------
 # Configs & DB paths
