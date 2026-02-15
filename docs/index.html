@@ -384,21 +384,31 @@ html.dark .msg.ai p code {
   color: #000;
   }
 
-/* === THINKING ORBS ANIMATION === */
+/* === THINKING ORBS GOD MODE === */
 .thinking-orbs{
   display:flex;
-  justify-content:center;
   align-items:center;
-  gap:16px;
-  margin:18px 0;
-  height:40px;
+  gap:8px;
+  margin:6px 0 6px 8px; /* slightly left */
+  height:26px;
+  justify-content:flex-start;
 }
 
 .orb{
-  width:18px;
-  height:18px;
+  width:14px;
+  height:14px;
   border-radius:50%;
   animation: orbit 1.2s linear infinite;
+}
+
+/* Optional premium fade */
+.msg.ai {
+  animation: fadeIn .25s ease-in;
+}
+
+@keyframes fadeIn{
+  from { opacity:0; transform: translateY(4px); }
+  to { opacity:1; transform: translateY(0); }
 }
 
 .fire{
@@ -754,7 +764,6 @@ function enhanceCodeBlocks(container){
   
 /* -------------- SEND MESSAGE (no stream) -------------- */
 async function sendMessage(){
-
   const text = input.value.trim();
   if(!text) return;
 
@@ -773,15 +782,33 @@ async function sendMessage(){
   const orbs = document.getElementById("thinkingOrbs");
   orbs.style.display = "flex";
 
-  const startTime = Date.now();
+  let aiDiv = null;
+  let thinkingShown = false;
+  let responseReceived = false;
+
+  // 🔥 SHOW ORBS MAX 4 SECONDS
+  const orbTimer = setTimeout(() => {
+    if(responseReceived) return; // response already arrived
+
+    orbs.style.display = "none";
+
+    aiDiv = document.createElement('div');
+    aiDiv.className = 'msg ai';
+    aiDiv.textContent = "ZultX is thinking deep...";
+    chatArea.appendChild(aiDiv);
+
+    thinkingShown = true;
+  }, 4000);
 
   try{
     const token = getToken();
     const sessionId = ensureSessionId();
+
     const headers = {
       "Accept": "application/json",
       "X-Session-Id": sessionId
     };
+
     if(token) headers["Authorization"] = "Bearer " + token;
 
     const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, {
@@ -790,37 +817,34 @@ async function sendMessage(){
     });
 
     const data = await res.json();
-    const answer = (data && data.answer) ? data.answer : "I cannot compute it safely.";
+    const answer = (data && data.answer)
+      ? data.answer
+      : "I cannot compute it safely.";
 
-    // ⏳ Ensure minimum 3 seconds orb time
-    const elapsed = Date.now() - startTime;
-    const remaining = Math.max(0, 3000 - elapsed);
+    responseReceived = true;
+    clearTimeout(orbTimer);
+    orbs.style.display = "none";
 
-    setTimeout(() => {
-
-      orbs.style.display = "none";
-
-      // show AI bubble AFTER orbs
-      const aiDiv = document.createElement('div');
+    // If thinking message never appeared (fast backend)
+    if(!thinkingShown){
+      aiDiv = document.createElement('div');
       aiDiv.className = 'msg ai';
-      aiDiv.textContent = "ZultX is thinking deep..";
       chatArea.appendChild(aiDiv);
+    }
 
-      // slight micro delay before streaming
-      setTimeout(() => {
-        fakeStream(aiDiv, answer, 3);
-        saveMessageToHistory(currentConversationId, 'ai', answer);
-      }, 800);
-
-    }, remaining);
+    // Replace thinking text smoothly
+    fakeStream(aiDiv, answer, 3);
+    saveMessageToHistory(currentConversationId, 'ai', answer);
 
   } catch(err){
+    clearTimeout(orbTimer);
     orbs.style.display = "none";
     addAiMsg("⚠️ Connection error.");
   } finally {
     sendBtn.disabled = false;
   }
-  }
+}
+
 
 
 /* -------------- OPEN / NEW CONVERSATION -------------- */
