@@ -761,7 +761,37 @@ function enhanceCodeBlocks(container){
   pre.appendChild(btn);
 });
 }
-  
+
+function animateThinkingLogs(aiDiv, logs, callback){
+  let index = 0;
+
+  function typeLine(){
+    if(index >= logs.length){
+      if(callback) setTimeout(callback, 800);
+      return;
+    }
+
+    const line = logs[index];
+    let charIndex = 0;
+
+    const p = document.createElement("div");
+    aiDiv.appendChild(p);
+
+    const typing = setInterval(() => {
+      p.textContent += line.charAt(charIndex);
+      charIndex++;
+
+      if(charIndex >= line.length){
+        clearInterval(typing);
+        index++;
+        setTimeout(typeLine, 400);
+      }
+    }, 20);
+  }
+
+  typeLine();
+}
+
 /* -------------- SEND MESSAGE (no stream) -------------- */
 async function sendMessage(){
   const text = input.value.trim();
@@ -783,12 +813,10 @@ async function sendMessage(){
   orbs.style.display = "flex";
 
   let aiDiv = null;
-  let thinkingShown = false;
-  let responseReceived = false;
+  let responseData = null;
 
-  // 🔥 SHOW ORBS MAX 5 SECONDS
+  // 🔥 5 SEC ORBS
   const orbTimer = setTimeout(() => {
-    if(responseReceived) return; // response already arrived
 
     orbs.style.display = "none";
 
@@ -797,10 +825,35 @@ async function sendMessage(){
     aiDiv.textContent = "ZultX is thinking deep...";
     chatArea.appendChild(aiDiv);
 
-    thinkingShown = true;
+    // 🔥 AFTER 2 SEC → SHOW LOGS
+    setTimeout(() => {
+
+      aiDiv.innerHTML = ""; // clear thinking text
+
+      const fakeLogs = [
+        "Analyzing user intent...",
+        "Checking memory context...",
+        "Understanding conversation depth...",
+        "Generating structured response..."
+      ];
+
+      animateThinkingLogs(aiDiv, fakeLogs, () => {
+
+        // After logs complete → show real answer
+        if(responseData){
+          aiDiv.innerHTML = "";
+          fakeStream(aiDiv, responseData, 3);
+          saveMessageToHistory(currentConversationId, 'ai', responseData);
+        }
+
+      });
+
+    }, 2000);
+
   }, 5000);
 
   try{
+
     const token = getToken();
     const sessionId = ensureSessionId();
 
@@ -817,24 +870,9 @@ async function sendMessage(){
     });
 
     const data = await res.json();
-    const answer = (data && data.answer)
+    responseData = (data && data.answer)
       ? data.answer
       : "I cannot compute it safely.";
-
-    responseReceived = true;
-    clearTimeout(orbTimer);
-    orbs.style.display = "none";
-
-    // If thinking message never appeared (fast backend)
-    if(!thinkingShown){
-      aiDiv = document.createElement('div');
-      aiDiv.className = 'msg ai';
-      chatArea.appendChild(aiDiv);
-    }
-
-    // Replace thinking text smoothly
-    fakeStream(aiDiv, answer, 3);
-    saveMessageToHistory(currentConversationId, 'ai', answer);
 
   } catch(err){
     clearTimeout(orbTimer);
@@ -844,6 +882,7 @@ async function sendMessage(){
     sendBtn.disabled = false;
   }
 }
+
 
 
 /* -------------- OPEN / NEW CONVERSATION -------------- */
