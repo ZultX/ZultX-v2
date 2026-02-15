@@ -132,6 +132,11 @@ html.dark header{
   position:relative;
   margin-left:var(--side-w);
 }
+.mobile-only{ display:none; }
+
+@media (max-width:880px){
+  .mobile-only{ display:inline-flex; }
+}
 
 /* center initial screen with suggestion cards */
 .center-screen{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);padding:40px}
@@ -549,21 +554,6 @@ html.light .ai-pulse{
   background:#222;
 }
 
-@keyframes pulse{
-  0%{
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50%{
-    transform: scale(1.4);
-    opacity: 1;
-  }
-  100%{
-    transform: scale(1);
-    opacity: 0.6;
-  }
-}
-
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -599,6 +589,7 @@ html.light .ai-pulse{
     <div id="topTipBtn" class="top-tip"><span>🍏</span><strong style="margin-left:6px">Tip</strong></div>
     <div id="lettersBtn" style="padding:8px 10px;border-radius:10px;background:var(--glass);cursor:pointer">✉️ Letter</div>
     <div id="shareBtn" class="top-tip" title="Share ZultX"><span>🔗</span><strong style="margin-left:6px">Share</strong></div>
+    <div id="mobileMenuBtn" class="top-tip mobile-only">☰</div>
 
 
     <!-- temp chat 3/4 circle icon -->
@@ -648,7 +639,6 @@ html.light .ai-pulse{
 
     <!-- chat area (hidden initially) -->
     <div id="chatArea" class="chat-wrap" style="display:none" aria-live="polite"></div>
-    <div id="mobileMenuBtn" class="top-tip">☰</div>
     <!-- compose -->
     <div class="compose">
       <textarea id="input" placeholder="Ask ZultX something positive..." rows="1" aria-label="Your message"></textarea>
@@ -910,11 +900,11 @@ async function sendMessage(){
   let aiDiv = document.createElement('div');
   aiDiv.className = 'msg ai thinking';
   chatArea.appendChild(aiDiv);
-  // Insert pulse inside bubble
+
   aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
-  aiDiv.textContent = "";
+
   setTimeout(()=>{
-  aiDiv.classList.add("fast");
+    aiDiv.classList.add("fast");
   }, 1800);
 
   try{
@@ -925,15 +915,17 @@ async function sendMessage(){
       "Accept": "application/json",
       "X-Session-Id": sessionId
     };
-
     if(token) headers["Authorization"] = "Bearer " + token;
 
-    // ⚡ Start timer (for debugging real speed)
     const startTime = performance.now();
 
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, {
-      method: "GET",
-      headers: headers
+    const res = await fetch(`${API_BASE}/ask`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers
+      },
+      body: JSON.stringify({ q: text })
     });
 
     const data = await res.json();
@@ -941,35 +933,28 @@ async function sendMessage(){
     const endTime = performance.now();
     console.log("⚡ Real response time:", ((endTime - startTime)/1000).toFixed(2), "sec");
 
-    const answer = (data && data.answer)
-      ? data.answer
-      : "I cannot compute it safely.";
+    const answer = data?.answer || "I cannot compute it safely.";
 
-    // 🔥 STOP ORBS IMMEDIATELY WHEN RESPONSE ARRIVES
-    orbs.style.display = "none";
+    aiDiv.classList.remove("thinking");
 
-    // Stream answer instantly
     aiDiv.style.opacity = "0.6";
+
     setTimeout(()=>{
-      aiDiv.innerHTML = "";
-      aiDiv.style.opacity = "1";
       aiDiv.innerHTML = marked.parse(answer);
       aiDiv.querySelectorAll("pre code").forEach(b => hljs.highlightElement(b));
       enhanceCodeBlocks(aiDiv);
-
+      aiDiv.style.opacity = "1";
+      chatArea.scrollTop = chatArea.scrollHeight;
     }, 120);
 
-    aiDiv.classList.remove("thinking");  
     saveMessageToHistory(currentConversationId, 'ai', answer);
 
   } catch(err){
-    orbs.style.display = "none";
     aiDiv.textContent = "⚠️ Connection error.";
   } finally {
     sendBtn.disabled = false;
   }
 }
-
 
 
 
