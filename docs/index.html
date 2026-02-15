@@ -786,7 +786,7 @@ async function sendMessage(){
   let thinkingShown = false;
   let responseReceived = false;
 
-  // 🔥 SHOW ORBS MAX 4 SECONDS
+  // 🔥 SHOW ORBS MAX 5 SECONDS
   const orbTimer = setTimeout(() => {
     if(responseReceived) return; // response already arrived
 
@@ -798,7 +798,7 @@ async function sendMessage(){
     chatArea.appendChild(aiDiv);
 
     thinkingShown = true;
-  }, 4000);
+  }, 5000);
 
   try{
     const token = getToken();
@@ -844,7 +844,6 @@ async function sendMessage(){
     sendBtn.disabled = false;
   }
 }
-
 
 
 /* -------------- OPEN / NEW CONVERSATION -------------- */
