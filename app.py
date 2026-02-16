@@ -22,6 +22,7 @@ from fastapi import FastAPI, Query, Body, HTTPException, Request, Header
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import urllib.parse
 
 # External modules optional: bcrypt (faster) - fallback to PBKDF2 if not installed
 try:
@@ -66,11 +67,16 @@ app = FastAPI(title="ZULTX — v1.4 (auth)")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://zultx.github.io"
+        "https://zultx.github.io",
+        "https://zultx.github.io/ZultX-v2",
+        "http://localhost:3000",
+        "http://127.0.0.1:5500"
     ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # serve static if present (optional)
 if os.path.isdir("static"):
