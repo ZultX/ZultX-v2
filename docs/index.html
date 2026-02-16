@@ -438,6 +438,10 @@ body{
   opacity:0.85;
   transition: opacity 0.25s ease, transform 0.2s ease;
 }
+.compose{
+  position:relative;
+  z-index:5;
+}
 
 .msg.ai.thinking .ai-pulse{
   margin:4px 0;
@@ -549,9 +553,28 @@ body{
   }
 }
 
+.premium-modal{
+  pointer-events:none;
+}
+
+.premium-modal[style*="flex"]{
+  pointer-events:auto;
+}
 
 html.light .ai-pulse{
   background:#222;
+}
+@media (max-width:880px){
+  .side{
+    position:fixed;
+    left:-320px;
+    transition:left .3s ease;
+    z-index:10000;
+  }
+
+  .side.open{
+    left:0;
+  }
 }
 
 /* temp chats list */
@@ -886,7 +909,8 @@ async function sendMessage(){
 
   centerScreen.style.display = 'none';
   chatArea.style.display = 'flex';
-
+  console.log("Send clicked");
+  
   if(!currentConversationId){
     currentConversationId = makeConvoId();
     localSaveInit(currentConversationId);
@@ -894,7 +918,7 @@ async function sendMessage(){
 
   addUserMsg(text);
   input.value = '';
-  sendBtn.disabled = true;
+  sendBtn.disabled = false;
 
   let aiDiv = document.createElement('div');
   aiDiv.className = 'msg ai thinking';
