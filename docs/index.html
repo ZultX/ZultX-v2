@@ -706,6 +706,12 @@ html.light .ai-pulse{
 <script>
 /* -------------- CONFIG / STATE -------------- */
 const API_BASE = "https://zultx.up.railway.app"; // adjust if needed
+// --- Keep Railway warm (ping every 4 minutes) ---
+setInterval(() => {
+  fetch(`${API_BASE}/health`)
+    .catch(() => {}); // ignore errors silently
+}, 240000); // 240000 ms = 4 minutes
+
 const chatArea = document.getElementById("chatArea");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
