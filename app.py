@@ -423,16 +423,16 @@ async def normalize_result_to_text(result: Any) -> str:
 # -------------------------
 # Protected ask endpoint (uses identity extraction)
 # -------------------------
-@app.post("/ask")
-async def ask_post(
-    request: Request,
-    data: dict = Body(...)
-):
-    q = data.get("q", "")
-
-    if not q.strip():
-        raise HTTPException(status_code=400, detail="Missing query")
-
+@app.get("/ask") 
+async def ask_get(
+    request: Request, 
+    q: str = Query(..., alias="q"), 
+    mode: str = Query("friend"), 
+    temperature: Optional[float] = Query(None), 
+    max_tokens: int = Query(512), 
+    memory_mode: str = Query("auto")
+    ): 
+      if not q or not q.strip(): raise HTTPException(status_code=400, detail="Missing query")
     try:
         # extract owner (user or guest) and session_id
         owner, session_id = extract_user_and_session(request)
