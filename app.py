@@ -66,12 +66,7 @@ if not os.path.exists(example_path):
 app = FastAPI(title="ZULTX — v1.4 (auth)")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://zultx.github.io",
-        "https://zultx.github.io/ZultX-v2",
-        "http://localhost:3000",
-        "http://127.0.0.1:5500"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -428,14 +423,14 @@ async def normalize_result_to_text(result: Any) -> str:
 # -------------------------
 # Protected ask endpoint (uses identity extraction)
 # -------------------------
-@app.get("/ask")
-async def ask_get(request: Request,
-                  q: str = Query(..., alias="q"),
-                  mode: str = Query("friend"),
-                  temperature: Optional[float] = Query(None),
-                  max_tokens: int = Query(512),
-                  memory_mode: str = Query("auto")):
-    if not q or not q.strip():
+@app.post("/ask")
+async def ask_post(
+    request: Request,
+    data: dict = Body(...)
+):
+    q = data.get("q", "")
+
+    if not q.strip():
         raise HTTPException(status_code=400, detail="Missing query")
 
     try:
