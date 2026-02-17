@@ -99,7 +99,7 @@ except Exception as e:
 
 # CONFIG knobs (tune for speed)
 MAX_INJECT_TOKENS = int(os.getenv("ZULTX_MAX_INJECT_TOKENS", "1200"))
-TFIDF_TOP_K = int(os.getenv("ZULTX_TFIDF_K", "8"))  # smaller K => faster
+TFIDF_TOP_K = int(os.getenv("ZULTX_TFIDF_K", "6"))  # smaller K => faster
 PROMOTE_TO_CM_SCORE = float(os.getenv("ZULTX_PROMOTE_CM", "0.60"))
 PROMOTE_TO_LTM_SCORE = float(os.getenv("ZULTX_PROMOTE_LTM", "0.85"))
 CONFIDENCE_PROMOTE_THRESHOLD = float(os.getenv("ZULTX_CONF_PROMOTE", "0.80"))
@@ -121,7 +121,7 @@ _RECALL_BUILD_LOCK = threading.Lock()
 _CONV_LOCK = threading.Lock()
 
 # debounce settings for recall rebuild (seconds)
-_RECALL_DEBOUNCE_SECONDS = int(os.getenv("RECALL_DEBOUNCE_SECONDS", "5"))
+_RECALL_DEBOUNCE_SECONDS = int(os.getenv("RECALL_DEBOUNCE_SECONDS", "60"))
 _last_recall_build = 0.0
 _recall_build_scheduled = False
 
@@ -338,12 +338,12 @@ class SimpleRecall:
             cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 if PG_AVAILABLE and DB_URL:
-                    cur.execute("SELECT id, owner, content FROM memories WHERE type IN ('CM','LTM')")
+                    cur.execute("SELECT id, owner, content, type, memory_score, expires_at FROM memories WHERE type IN ('CM','LTM')")
                     rows = cur.fetchall()
                     # RealDictCursor -> dicts
                     self.corpus = [(r["id"], r.get("owner"), r["content"]) for r in rows]
                 else:
-                    rows = cur.execute("SELECT id, owner, content FROM memories WHERE type IN ('CM','LTM')").fetchall()
+                    rows = cur.execute("SELECT id, owner, content, type, memory_score, expires_at FROM memories WHERE type IN ('CM','LTM')").fetchall()
                     self.corpus = [(r["id"], r["owner"], r["content"]) for r in rows]
                 texts = [t for (_id, _owner, t) in self.corpus]
                 if SKLEARN_AVAIL and texts and len(texts) > 1:
@@ -1015,7 +1015,8 @@ def add_to_conversation_buffer(session_id: str, role: str, content: str, owner: 
     except Exception:
         pass
 
-def get_recent_chat_block(session_id: str) -> str:
+
+def get_recent_chat_block(session_id: str, owner: Optional[str] = None) -> str:
     if not session_id:
         return ""
     with _CONV_LOCK:
@@ -1025,7 +1026,7 @@ def get_recent_chat_block(session_id: str) -> str:
         # attempt to load persisted rows (owner optional for now)
         try:
             # use empty owner and limit
-            rows = load_recent_messages_from_db(None, session_id, limit=CONV_BUFFER_LIMIT)
+            rows = load_recent_messages_from_db(owner, session_id, limit=CONV_BUFFER_LIMIT)
             if rows:
                 with _CONV_LOCK:
                     _CONV_BUFFERS[session_id] = rows
@@ -1154,7 +1155,7 @@ def phase4_ask(user_input: str,
         inject_memories = retrieve_relevant_memories(user_input, owner, max_tokens_budget=MAX_INJECT_TOKENS)
 
     injection = build_memory_injection_block(inject_memories)
-    recent_chat_block = get_recent_chat_block(session_id) if session_id else ""
+    recent_chat_block = get_recent_chat_block(session_id, owner) if session_id else ""
 
     # Prepare final prompt
     prompt_parts = []
@@ -1270,12 +1271,6 @@ def phase4_ask(user_input: str,
                 enqueue_retry({"op": "insert_memory", "candidate": mem_obj})
                 memory_actions.append({"id": None, "action": "queued", "detail": str(ee)})
                 audit("write_failed", None, {"error": str(ee)})
-
-    # cleanup expired memories async (non-blocking)
-    try:
-        threading.Thread(target=cleanup_expired_memories, daemon=True).start()
-    except Exception:
-        pass
 
     explain = []
     for m in inject_memories:
