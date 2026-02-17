@@ -1,14 +1,11 @@
 # phase_4.py — Hardened / optimized (drop-in)
 """
 ZULTX Phase 4 — Hardened memory orchestration
-Key improvements:
-- Postgres connection pool (psycopg2) when DATABASE_URL is set
-- Conversation buffer persisted to DB (survives Railway restarts)
-- Debounced recall index rebuild (async background)
-- Safe DB resource handling (putconn / close)
-- Non-blocking Pinecone/OpenAI calls guarded
-- Minimal blocking on hot path
-- Configuration knobs at top for speed tuning
+- Works with Postgres pool (psycopg2) or SQLite fallback
+- Conversation buffer persisted to DB (survives restarts)
+- Debounced recall index rebuild
+- Non-blocking background writes for memory updates
+- Defensive row handling to avoid "tuple indices" errors
 """
 import os
 import re
@@ -18,6 +15,7 @@ import uuid
 import math
 import threading
 import traceback
+import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -41,7 +39,6 @@ if USE_POSTGRES:
         import psycopg2.extras
         from psycopg2.pool import SimpleConnectionPool
         PG_AVAILABLE = True
-        # small pool; tune min/max as needed
         min_conn = int(os.getenv("PG_POOL_MIN", "1"))
         max_conn = int(os.getenv("PG_POOL_MAX", "6"))
         try:
@@ -58,7 +55,7 @@ if USE_POSTGRES:
 SQLITE_PATH = os.getenv("ZULTX_MEMORY_DB", "zultx_memory.db")
 USE_SQLITE = not PG_AVAILABLE
 
-# Pinecone
+# Pinecone (optional)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX")
@@ -97,9 +94,9 @@ except Exception as e:
     phase3_ask = None
     print("[phase_4] WARNING: phase_3.ask not importable:", e)
 
-# CONFIG knobs (tune for speed)
+# CONFIG knobs
 MAX_INJECT_TOKENS = int(os.getenv("ZULTX_MAX_INJECT_TOKENS", "1200"))
-TFIDF_TOP_K = int(os.getenv("ZULTX_TFIDF_K", "6"))  # smaller K => faster
+TFIDF_TOP_K = int(os.getenv("ZULTX_TFIDF_K", "6"))
 PROMOTE_TO_CM_SCORE = float(os.getenv("ZULTX_PROMOTE_CM", "0.60"))
 PROMOTE_TO_LTM_SCORE = float(os.getenv("ZULTX_PROMOTE_LTM", "0.85"))
 CONFIDENCE_PROMOTE_THRESHOLD = float(os.getenv("ZULTX_CONF_PROMOTE", "0.80"))
@@ -120,15 +117,12 @@ _db_lock = threading.RLock()
 _RECALL_BUILD_LOCK = threading.Lock()
 _CONV_LOCK = threading.Lock()
 
-# debounce settings for recall rebuild (seconds)
+# debounce
 _RECALL_DEBOUNCE_SECONDS = int(os.getenv("RECALL_DEBOUNCE_SECONDS", "60"))
 _last_recall_build = 0.0
 _recall_build_scheduled = False
 
-# ---------------------------
-# DB Schema (Postgres + SQLite compatibility)
-# - added conversations table to persist convo buffers
-# ---------------------------
+# DB init SQL (Postgres + SQLite compatibility)
 _POSTGRES_INIT_SQL = """
 CREATE TABLE IF NOT EXISTS memories (
     id TEXT PRIMARY KEY,
@@ -222,9 +216,7 @@ CREATE TABLE IF NOT EXISTS conversations (
 CREATE INDEX IF NOT EXISTS idx_conversations_session_ts ON conversations (session_id, ts DESC);
 """
 
-# ---------------------------
 # Utilities
-# ---------------------------
 def now_ts() -> str:
     return datetime.utcnow().isoformat()
 
@@ -248,11 +240,8 @@ def clamp(v, a=0.0, b=1.0):
         v = a
     return max(a, min(b, v))
 
-# ---------------------------
 # DB connection helpers
-# ---------------------------
 def _pg_getconn():
-    """Get a connection from pool or direct conn (always dict cursor)"""
     if PG_POOL:
         try:
             conn = PG_POOL.getconn()
@@ -260,55 +249,49 @@ def _pg_getconn():
             return conn
         except Exception:
             pass
-
-    # fallback direct
+    # direct fallback
     conn = psycopg2.connect(DB_URL)
     conn.autocommit = False
     return conn
 
 def _pg_putconn(conn):
-    if PG_POOL and isinstance(conn, psycopg2.extensions.connection):
-        try:
+    try:
+        if PG_POOL and isinstance(conn, psycopg2.extensions.connection):
             PG_POOL.putconn(conn)
             return
-        except Exception:
-            pass
+    except Exception:
+        pass
     try:
         conn.close()
     except Exception:
         pass
 
 def get_db_conn():
-    """
-    Returns:
-      - If Postgres available: a psycopg2 connection (must be returned with _pg_putconn if using pool)
-      - Else: sqlite3 connection
-    IMPORTANT: callers must close cursor and either call _pg_putconn(conn) (for PG) or conn.close() for sqlite.
-    """
     if PG_AVAILABLE and DB_URL:
         return _pg_getconn()
-    import sqlite3
     conn = sqlite3.connect(SQLITE_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     return conn
 
-# ---------------------------
-# initialize DB (safe)
-# ---------------------------
+# initialize DB
 def initialize_db():
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute(_POSTGRES_INIT_SQL)
                 conn.commit()
+                cur.close()
+                _pg_putconn(conn)
             else:
+                cur = conn.cursor()
                 cur.executescript(_SQLITE_INIT_SQL)
                 conn.commit()
+                cur.close()
+                conn.close()
         except Exception as e:
             print("[phase_4] initialize_db error:", e)
-        finally:
             try:
                 if PG_AVAILABLE and DB_URL:
                     _pg_putconn(conn)
@@ -319,9 +302,30 @@ def initialize_db():
 
 initialize_db()
 
-# ---------------------------
-# Recall index (TF-IDF) with debounced rebuild
-# ---------------------------
+# defensive row accessor to avoid tuple/dict mismatch errors
+def _col(row: Any, name: str, idx: int):
+    """Return row[name] or row[idx] in a safe way."""
+    try:
+        if row is None:
+            return None
+        if isinstance(row, dict):
+            return row.get(name)
+        # sqlite3.Row supports mapping
+        if hasattr(row, '__getitem__') and name in getattr(row, "keys", lambda: [])():
+            try:
+                return row[name]
+            except Exception:
+                pass
+        # fallback to index
+        try:
+            return row[idx]
+        except Exception:
+            # last resort: try attribute
+            return getattr(row, name, None)
+    except Exception:
+        return None
+
+# Recall index (TF-IDF)
 class SimpleRecall:
     def __init__(self):
         self.vectorizer = None
@@ -335,16 +339,46 @@ class SimpleRecall:
             start = time.time()
             rows = []
             conn = get_db_conn()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 if PG_AVAILABLE and DB_URL:
-                    cur.execute("SELECT id, owner, content, type, memory_score, expires_at FROM memories WHERE type IN ('CM','LTM')")
+                    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                    cur.execute("SELECT id, owner, content FROM memories WHERE type IN ('CM','LTM')")
                     rows = cur.fetchall()
-                    # RealDictCursor -> dicts
-                    self.corpus = [(r["id"], r.get("owner"), r["content"]) for r in rows]
+                    cur.close()
+                    _pg_putconn(conn)
                 else:
-                    rows = cur.execute("SELECT id, owner, content, type, memory_score, expires_at FROM memories WHERE type IN ('CM','LTM')").fetchall()
-                    self.corpus = [(r["id"], r["owner"], r["content"]) for r in rows]
+                    cur = conn.cursor()
+                    rows = cur.execute("SELECT id, owner, content FROM memories WHERE type IN ('CM','LTM')").fetchall()
+                    cur.close()
+                    conn.close()
+                corpus = []
+                for r in rows:
+                    # use defensive accessor
+                    mem_id = None
+                    owner = None
+                    content = None
+                    try:
+                        if isinstance(r, dict):
+                            mem_id = r.get("id")
+                            owner = r.get("owner")
+                            content = r.get("content")
+                        else:
+                            # sqlite3.Row supports mapping; elif tuple-like
+                            try:
+                                mem_id = r["id"]
+                                owner = r.get("owner") if hasattr(r, "get") else r["owner"]
+                                content = r["content"]
+                            except Exception:
+                                # fallback to positional (id, owner, content)
+                                mem_id = _col(r, "id", 0)
+                                owner = _col(r, "owner", 1)
+                                content = _col(r, "content", 2)
+                    except Exception:
+                        pass
+                    if mem_id is None:
+                        continue
+                    corpus.append((str(mem_id), owner, content or ""))
+                self.corpus = corpus
                 texts = [t for (_id, _owner, t) in self.corpus]
                 if SKLEARN_AVAIL and texts and len(texts) > 1:
                     try:
@@ -362,26 +396,19 @@ class SimpleRecall:
             except Exception as e:
                 print("[phase_4][recall] build error:", e)
             finally:
-                try:
-                    if PG_AVAILABLE and DB_URL:
-                        _pg_putconn(conn)
-                    else:
-                        conn.close()
-                except Exception:
-                    pass
-            # debug
-            # print("[phase_4] recall built in", time.time()-start, "s, corpus size:", len(self.corpus))
+                pass
 
     def retrieve(self, query: str, k: int = TFIDF_TOP_K, owner: Optional[str] = None) -> List[Tuple[str, str, float]]:
-        # fast path: empty corpus
         if not self.corpus:
             return []
         filtered = []
         for mem_id, mem_owner, content in self.corpus:
             if owner is None:
+                # only global memories (owner is None)
                 if mem_owner is None:
                     filtered.append((mem_id, content))
             else:
+                # owner's memories or global
                 if mem_owner is None or mem_owner == owner:
                     filtered.append((mem_id, content))
         if not filtered:
@@ -399,15 +426,13 @@ class SimpleRecall:
                 return out
             except Exception:
                 pass
-        # cheap substring fallback
-        q = query.lower()
+        q = (query or "").lower()
         scored = []
         for mem_id, t in zip(ids, texts):
             txt = (t or "").lower()
             score = 0.0
-            if q in txt:
+            if q and q in txt:
                 score += 1.0
-            # tiny partial match boost
             for w in q.split()[:8]:
                 if w and w in txt:
                     score += 0.01
@@ -418,7 +443,6 @@ class SimpleRecall:
 _recall_instance = SimpleRecall()
 
 def _schedule_recall_rebuild(debounce_seconds: int = _RECALL_DEBOUNCE_SECONDS):
-    # schedule a rebuild if not recently done
     global _recall_build_scheduled, _last_recall_build
     with _RECALL_BUILD_LOCK:
         now = time.time()
@@ -441,15 +465,12 @@ def _schedule_recall_rebuild(debounce_seconds: int = _RECALL_DEBOUNCE_SECONDS):
     t = threading.Thread(target=_worker, daemon=True)
     t.start()
 
-# initial build (background safe)
 try:
     _schedule_recall_rebuild(0)
 except Exception:
     pass
 
-# ---------------------------
-# Memory scoring & policy (same as before)
-# ---------------------------
+# Memory scoring & policy
 def compute_memory_score(importance: float, frequency: int, created_at: Optional[str], confidence: float) -> float:
     importance = clamp(importance)
     confidence = clamp(confidence)
@@ -479,26 +500,28 @@ def anonymize_if_needed(content: str) -> str:
     s = re.sub(r"\b\d{10}\b", "[phone]", s)
     return s
 
-# ---------------------------
 # Audit + queue
-# ---------------------------
 def audit(action: str, mem_id: Optional[str], payload: Dict[str, Any]):
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
-                ts = datetime.utcnow()
                 if PG_AVAILABLE and DB_URL:
+                    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                     cur.execute("INSERT INTO audit_log (id, ts, action, mem_id, payload) VALUES (%s, %s, %s, %s, %s)",
-                                (uuid4(), ts, action, mem_id, psycopg2.extras.Json(payload)))
+                                (uuid4(), datetime.utcnow(), action, mem_id, psycopg2.extras.Json(payload)))
+                    conn.commit()
+                    cur.close()
+                    _pg_putconn(conn)
                 else:
+                    cur = conn.cursor()
                     cur.execute("INSERT INTO audit_log (id, ts, action, mem_id, payload) VALUES (?, ?, ?, ?, ?)",
                                 (uuid4(), now_ts(), action, mem_id, json.dumps(payload)))
-                conn.commit()
+                    conn.commit()
+                    cur.close()
+                    conn.close()
             except Exception as e:
                 print("[phase_4][audit_error]", e)
-            finally:
                 try:
                     if PG_AVAILABLE and DB_URL:
                         _pg_putconn(conn)
@@ -507,7 +530,6 @@ def audit(action: str, mem_id: Optional[str], payload: Dict[str, Any]):
                 except Exception:
                     pass
     except Exception:
-        # never crash entire process because of audit
         print("[phase_4] audit top-level exception")
         traceback.print_exc()
 
@@ -515,19 +537,23 @@ def enqueue_retry(item: Dict[str, Any]):
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
-                ts = datetime.utcnow()
                 if PG_AVAILABLE and DB_URL:
+                    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                     cur.execute("INSERT INTO queue_pending (id, ts, payload) VALUES (%s, %s, %s)",
-                                (uuid4(), ts, psycopg2.extras.Json(item)))
+                                (uuid4(), datetime.utcnow(), psycopg2.extras.Json(item)))
+                    conn.commit()
+                    cur.close()
+                    _pg_putconn(conn)
                 else:
+                    cur = conn.cursor()
                     cur.execute("INSERT OR REPLACE INTO queue_pending (id, ts, payload) VALUES (?,?,?)",
                                 (uuid4(), now_ts(), json.dumps(item)))
-                conn.commit()
+                    conn.commit()
+                    cur.close()
+                    conn.close()
             except Exception as e:
                 print("[phase_4][enqueue_error]", e)
-            finally:
                 try:
                     if PG_AVAILABLE and DB_URL:
                         _pg_putconn(conn)
@@ -539,27 +565,29 @@ def enqueue_retry(item: Dict[str, Any]):
     except Exception:
         pass
 
-# ---------------------------
-# Conversations persistence (buffer survives restarts)
-# ---------------------------
+# Conversations persistence
 def persist_conversation(session_id: str, owner: Optional[str], role: str, content: str, ts_iso: Optional[str] = None):
     ts = ts_iso or now_ts()
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 if PG_AVAILABLE and DB_URL:
+                    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                     cur.execute("INSERT INTO conversations (session_id, owner, role, content, ts) VALUES (%s,%s,%s,%s,%s)",
                                 (session_id, owner, role, content, ts))
+                    conn.commit()
+                    cur.close()
+                    _pg_putconn(conn)
                 else:
+                    cur = conn.cursor()
                     cur.execute("INSERT INTO conversations (session_id, owner, role, content, ts) VALUES (?,?,?,?,?)",
                                 (session_id, owner, role, content, ts))
-                conn.commit()
+                    conn.commit()
+                    cur.close()
+                    conn.close()
             except Exception as e:
-                # swallow but log
                 print("[phase_4] persist_conversation error:", e)
-            finally:
                 try:
                     if PG_AVAILABLE and DB_URL:
                         _pg_putconn(conn)
@@ -570,45 +598,53 @@ def persist_conversation(session_id: str, owner: Optional[str], role: str, conte
     except Exception:
         pass
 
-def load_recent_messages_from_db(owner: str, session_id: str, limit: int = 7):
+def load_recent_messages_from_db(owner: Optional[str], session_id: str, limit: int = 7):
     try:
         conn = get_db_conn()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         results = []
         try:
             if PG_AVAILABLE and DB_URL:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute("SELECT role, content, ts FROM conversations WHERE session_id = %s ORDER BY ts DESC LIMIT %s", (session_id, limit))
                 rows = cur.fetchall()
-                rows = list(rows)
+                cur.close()
+                _pg_putconn(conn)
             else:
+                cur = conn.cursor()
                 rows = cur.execute("SELECT role, content, ts FROM conversations WHERE session_id = ? ORDER BY ts DESC LIMIT ?", (session_id, limit)).fetchall()
+                cur.close()
+                conn.close()
+            rows = list(rows)
             rows.reverse()
             for r in rows:
-                # row may be dict or sqlite Row
                 if isinstance(r, dict):
                     results.append({"role": r.get("role"), "content": r.get("content"), "ts": r.get("ts")})
                 else:
-                    results.append({"role": r[0], "content": r[1], "ts": r[2]})
+                    # sqlite3.Row or tuple
+                    role = _col(r, "role", 0)
+                    content = _col(r, "content", 1)
+                    ts = _col(r, "ts", 2)
+                    results.append({"role": role, "content": content, "ts": ts})
         except Exception as e:
             print("[phase_4] load_recent_messages_from_db error:", e)
-        finally:
-            if PG_AVAILABLE and DB_URL:
-                _pg_putconn(conn)
-            else:
-                conn.close()
+            try:
+                if PG_AVAILABLE and DB_URL:
+                    _pg_putconn(conn)
+                else:
+                    conn.close()
+            except Exception:
+                pass
         return results
     except Exception:
         return []
 
-# ---------------------------
 # CRUD memories + index refresh trigger
-# ---------------------------
 def insert_memory(mem: Dict[str, Any]) -> str:
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute("""
                     INSERT INTO memories
                     (id, owner, type, content, source, raw_snippet, created_at, last_used, expires_at,
@@ -639,7 +675,11 @@ def insert_memory(mem: Dict[str, Any]) -> str:
                     bool(mem.get("consent", True)),
                     psycopg2.extras.Json(mem.get("metadata") or {})
                 ))
+                conn.commit()
+                cur.close()
+                _pg_putconn(conn)
             else:
+                cur = conn.cursor()
                 cur.execute("""
                     INSERT OR REPLACE INTO memories
                     (id, owner, type, content, source, raw_snippet, created_at, last_used, expires_at,
@@ -663,26 +703,17 @@ def insert_memory(mem: Dict[str, Any]) -> str:
                     1 if mem.get("consent", True) else 0,
                     json.dumps(mem.get("metadata") or {})
                 ))
-            conn.commit()
+                conn.commit()
+                cur.close()
+                conn.close()
         except Exception as e:
             try:
                 conn.rollback()
             except Exception:
                 pass
             raise
-        finally:
-            try:
-                if PG_AVAILABLE and DB_URL:
-                    _pg_putconn(conn)
-                else:
-                    conn.close()
-            except Exception:
-                pass
-
     audit("create_memory", mem.get("id"), {"owner": mem.get("owner"), "summary": (mem.get("content") or "")[:140]})
-    # schedule recall rebuild (debounced) — do not block
     _schedule_recall_rebuild()
-    # pinecone upsert in background
     try:
         if USE_PINECONE and PINECONE_CLIENT and mem.get("type") in ("CM", "LTM"):
             t = threading.Thread(target=_pine_upsert_safe, args=(mem,), daemon=True)
@@ -704,92 +735,73 @@ def _pine_upsert_safe(mem):
         audit("pinecone_embed_err", mem.get("id"), {"err": str(e)})
 
 def update_memory_last_used(mem_id: str):
-    """
-    Safely updates last_used, increments frequency,
-    and recomputes memory_score.
-
-    Works for:
-      - Postgres (RealDictCursor)
-      - SQLite (Row)
-    """
-
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor(
-            cursor_factory=psycopg2.extras.RealDictCursor
-        ) if PG_AVAILABLE and DB_URL else conn.cursor()
-
         try:
-            # Fetch required fields
             if PG_AVAILABLE and DB_URL:
-                cur.execute(
-                    "SELECT importance, confidence, frequency, created_at "
-                    "FROM memories WHERE id = %s",
-                    (mem_id,)
-                )
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute("SELECT importance, confidence, frequency, created_at FROM memories WHERE id = %s", (mem_id,))
+                row = cur.fetchone()
             else:
-                cur.execute(
-                    "SELECT importance, confidence, frequency, created_at "
-                    "FROM memories WHERE id = ?",
-                    (mem_id,)
-                )
-
-            row = cur.fetchone()
-
+                cur = conn.cursor()
+                cur.execute("SELECT importance, confidence, frequency, created_at FROM memories WHERE id = ?", (mem_id,))
+                row = cur.fetchone()
+            cur.close()
+            if PG_AVAILABLE and DB_URL:
+                _pg_putconn(conn)
+            else:
+                conn.close()
             if not row:
-                return  # memory not found
-
-            # Normalize row access (dict OR sqlite Row)
+                return
+            # normalize
             if isinstance(row, dict):
                 importance = row.get("importance")
                 confidence = row.get("confidence")
                 frequency = row.get("frequency")
                 created_at = row.get("created_at")
             else:
-                importance, confidence, frequency, created_at = row
-
-            # Safe defaults (NO `or` usage)
+                importance = _col(row, "importance", 0)
+                confidence = _col(row, "confidence", 1)
+                frequency = _col(row, "frequency", 2)
+                created_at = _col(row, "created_at", 3)
             importance = float(importance) if importance is not None else 0.5
             confidence = float(confidence) if confidence is not None else 0.5
             frequency = int(frequency) if frequency is not None else 1
-
-            # Increment usage
             frequency += 1
-
-            # Recompute score
-            new_score = compute_memory_score(
-                importance,
-                frequency,
-                created_at,
-                confidence
-            )
-
-            # Update DB
-            if PG_AVAILABLE and DB_URL:
-                cur.execute(
-                    "UPDATE memories "
-                    "SET last_used = %s, frequency = %s, memory_score = %s "
-                    "WHERE id = %s",
-                    (datetime.utcnow(), frequency, new_score, mem_id)
-                )
-            else:
-                cur.execute(
-                    "UPDATE memories "
-                    "SET last_used = ?, frequency = ?, memory_score = ? "
-                    "WHERE id = ?",
-                    (now_ts(), frequency, new_score, mem_id)
-                )
-
-            conn.commit()
-
+            new_score = compute_memory_score(importance, frequency, created_at, confidence)
+            conn2 = get_db_conn()
+            try:
+                if PG_AVAILABLE and DB_URL:
+                    cur2 = conn2.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                    cur2.execute("UPDATE memories SET last_used = %s, frequency = %s, memory_score = %s WHERE id = %s",
+                                 (datetime.utcnow(), frequency, new_score, mem_id))
+                    conn2.commit()
+                    cur2.close()
+                    _pg_putconn(conn2)
+                else:
+                    cur2 = conn2.cursor()
+                    cur2.execute("UPDATE memories SET last_used = ?, frequency = ?, memory_score = ? WHERE id = ?",
+                                 (now_ts(), frequency, new_score, mem_id))
+                    conn2.commit()
+                    cur2.close()
+                    conn2.close()
+            except Exception:
+                try:
+                    conn2.rollback()
+                except Exception:
+                    pass
+                try:
+                    if PG_AVAILABLE and DB_URL:
+                        _pg_putconn(conn2)
+                    else:
+                        conn2.close()
+                except Exception:
+                    pass
         except Exception:
             try:
                 conn.rollback()
             except Exception:
                 pass
-            raise
-
-        finally:
             try:
                 if PG_AVAILABLE and DB_URL:
                     _pg_putconn(conn)
@@ -797,63 +809,55 @@ def update_memory_last_used(mem_id: str):
                     conn.close()
             except Exception:
                 pass
-
-    # Audit outside lock
-    audit("update_last_used", mem_id, {
-        "ts": now_ts(),
-        "frequency": frequency,
-        "memory_score": new_score
-    })
+            raise
+    audit("update_last_used", mem_id, {"ts": now_ts(), "frequency": frequency, "memory_score": new_score})
 
 def delete_owner_name_memories(owner: Optional[str]):
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 if owner is None:
                     cur.execute("DELETE FROM memories WHERE content LIKE 'name:%' AND owner IS NULL")
                 else:
                     cur.execute("DELETE FROM memories WHERE content LIKE 'name:%' AND owner = %s", (owner,))
+                conn.commit()
+                cur.close()
+                _pg_putconn(conn)
             else:
+                cur = conn.cursor()
                 if owner is None:
                     cur.execute("DELETE FROM memories WHERE content LIKE 'name:%' AND owner IS NULL")
                 else:
                     cur.execute("DELETE FROM memories WHERE content LIKE 'name:%' AND owner = ?", (owner,))
-            conn.commit()
+                conn.commit()
+                cur.close()
+                conn.close()
         finally:
-            try:
-                if PG_AVAILABLE and DB_URL:
-                    _pg_putconn(conn)
-                else:
-                    conn.close()
-            except Exception:
-                pass
+            pass
     audit("delete_name_memory", None, {"owner": owner})
-    # schedule rebuild
     _schedule_recall_rebuild()
 
 def get_memory(mem_id: str) -> Optional[Dict[str, Any]]:
     conn = get_db_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
     try:
         if PG_AVAILABLE and DB_URL:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cur.execute("SELECT * FROM memories WHERE id = %s", (mem_id,))
             row = cur.fetchone()
+            cur.close()
+            _pg_putconn(conn)
             if not row:
                 return None
             r = dict(row)
             if isinstance(r.get("tags"), str):
-                try:
-                    r["tags"] = json.loads(r["tags"])
-                except Exception:
-                    r["tags"] = []
+                try: r["tags"] = json.loads(r["tags"])
+                except Exception: r["tags"] = []
             r["tags"] = r.get("tags") or []
             if isinstance(r.get("metadata"), str):
-                try:
-                    r["metadata"] = json.loads(r["metadata"])
-                except Exception:
-                    r["metadata"] = {}
+                try: r["metadata"] = json.loads(r["metadata"])
+                except Exception: r["metadata"] = {}
             r["metadata"] = r.get("metadata") or {}
             for k in ("created_at", "last_used", "expires_at"):
                 if r.get(k) and not isinstance(r.get(k), str):
@@ -863,8 +867,11 @@ def get_memory(mem_id: str) -> Optional[Dict[str, Any]]:
                         pass
             return r
         else:
+            cur = conn.cursor()
             cur.execute("SELECT * FROM memories WHERE id = ?", (mem_id,))
             row = cur.fetchone()
+            cur.close()
+            conn.close()
             if not row:
                 return None
             r = dict(row)
@@ -872,52 +879,45 @@ def get_memory(mem_id: str) -> Optional[Dict[str, Any]]:
             r["metadata"] = json.loads(r["metadata"]) if r["metadata"] else {}
             return r
     finally:
-        try:
-            if PG_AVAILABLE and DB_URL:
-                _pg_putconn(conn)
-            else:
-                conn.close()
-        except Exception:
-            pass
+        pass
 
 def list_memories(limit: int = 50, owner: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = get_db_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
     try:
         out = []
         if PG_AVAILABLE and DB_URL:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             if owner is None:
                 cur.execute("SELECT * FROM memories ORDER BY memory_score DESC NULLS LAST, last_used DESC NULLS LAST LIMIT %s", (limit,))
             else:
                 cur.execute("SELECT * FROM memories WHERE owner = %s ORDER BY memory_score DESC NULLS LAST, last_used DESC NULLS LAST LIMIT %s", (owner, limit))
             rows = cur.fetchall()
+            cur.close()
+            _pg_putconn(conn)
             for r in rows:
                 rr = dict(r)
                 if isinstance(rr.get("tags"), str):
-                    try:
-                        rr["tags"] = json.loads(rr["tags"])
-                    except Exception:
-                        rr["tags"] = []
+                    try: rr["tags"] = json.loads(rr["tags"])
+                    except Exception: rr["tags"] = []
                 rr["tags"] = rr.get("tags") or []
                 if isinstance(rr.get("metadata"), str):
-                    try:
-                        rr["metadata"] = json.loads(rr["metadata"])
-                    except Exception:
-                        rr["metadata"] = {}
+                    try: rr["metadata"] = json.loads(rr["metadata"])
+                    except Exception: rr["metadata"] = {}
                 rr["metadata"] = rr.get("metadata") or {}
                 for k in ("created_at", "last_used", "expires_at"):
                     if rr.get(k) and not isinstance(rr.get(k), str):
-                        try:
-                            rr[k] = rr[k].isoformat()
-                        except Exception:
-                            pass
+                        try: rr[k] = rr[k].isoformat()
+                        except Exception: pass
                 out.append(rr)
             return out
         else:
+            cur = conn.cursor()
             if owner is None:
                 rows = cur.execute("SELECT * FROM memories ORDER BY memory_score DESC, last_used DESC LIMIT ?", (limit,)).fetchall()
             else:
                 rows = cur.execute("SELECT * FROM memories WHERE owner = ? ORDER BY memory_score DESC, last_used DESC LIMIT ?", (owner, limit)).fetchall()
+            cur.close()
+            conn.close()
             for r in rows:
                 d = dict(r)
                 d["tags"] = json.loads(d["tags"]) if d["tags"] else []
@@ -925,17 +925,9 @@ def list_memories(limit: int = 50, owner: Optional[str] = None) -> List[Dict[str
                 out.append(d)
             return out
     finally:
-        try:
-            if PG_AVAILABLE and DB_URL:
-                _pg_putconn(conn)
-            else:
-                conn.close()
-        except Exception:
-            pass
+        pass
 
-# ---------------------------
-# Extractor and promotion decision (unchanged logic, same as previous)
-# ---------------------------
+# Extractor & promotion
 def rule_based_extract(user_input: str, assistant_text: str) -> List[Dict[str, Any]]:
     candidates = []
     text = (user_input or "") + "\n\n" + (assistant_text or "")
@@ -993,9 +985,7 @@ def decide_storage_for_candidate(candidate: Dict[str, Any]) -> str:
         return "CM"
     return "STM"
 
-# ---------------------------
 # Conversation buffer (in-memory + persisted)
-# ---------------------------
 _CONV_BUFFERS: Dict[str, List[Dict[str, str]]] = {}
 CONV_BUFFER_LIMIT = int(os.getenv("CONV_BUFFER_LIMIT", "7"))
 
@@ -1009,23 +999,18 @@ def add_to_conversation_buffer(session_id: str, role: str, content: str, owner: 
         if len(buf) > CONV_BUFFER_LIMIT:
             buf = buf[-CONV_BUFFER_LIMIT:]
         _CONV_BUFFERS[session_id] = buf
-    # persist immediately (cheap single-row insert)
     try:
         persist_conversation(session_id, owner, role, content, ts_iso=ts)
     except Exception:
         pass
-
 
 def get_recent_chat_block(session_id: str, owner: Optional[str] = None) -> str:
     if not session_id:
         return ""
     with _CONV_LOCK:
         buf = _CONV_BUFFERS.get(session_id, [])
-    # if no in-memory buffer, try to load from DB (Railway restart case)
     if not buf:
-        # attempt to load persisted rows (owner optional for now)
         try:
-            # use empty owner and limit
             rows = load_recent_messages_from_db(owner, session_id, limit=CONV_BUFFER_LIMIT)
             if rows:
                 with _CONV_LOCK:
@@ -1040,11 +1025,11 @@ def get_recent_chat_block(session_id: str, owner: Optional[str] = None) -> str:
         lines.append(f"{m['role'].upper()}: {m['content']}")
     return "-- RECENT CHAT --\n" + "\n".join(lines) + "\n-- END RECENT CHAT --\n\n"
 
-# ---------------------------
 # Retrieval & injection
-# ---------------------------
 def retrieve_relevant_memories(user_input: str, owner: Optional[str], max_tokens_budget: int = MAX_INJECT_TOKENS) -> List[Dict[str, Any]]:
-    # ensure recall index is built at least once (non-blocking)
+    # require an owner (no global recall for anonymous requests)
+    if owner is None:
+        return []
     if _recall_instance.last_build == 0:
         _schedule_recall_rebuild(0)
     recs = _recall_instance.retrieve(user_input or "", k=TFIDF_TOP_K, owner=owner)
@@ -1055,19 +1040,15 @@ def retrieve_relevant_memories(user_input: str, owner: Optional[str], max_tokens
         if not mem:
             continue
         mem_owner = mem.get("owner")
-        if owner is None:
-          return []  # no cross-session memory
-        else:
-          if mem_owner is not None and mem_owner != owner: 
-             continue
-        
+        if mem_owner is not None and mem_owner != owner:
+            continue
         if mem.get("type") == "EM" and mem.get("expires_at"):
             exp = parse_ts(mem.get("expires_at"))
             if exp and exp < datetime.utcnow():
                 continue
         if (mem.get("memory_score") or 0.0) < 0.20:
             continue
-        if mem["content"].startswith("name:"):
+        if (mem.get("content") or "").startswith("name:"):
             if not re.search(r'\b(name|who am i|what is my name|my name)\b', (user_input or "").lower()):
                 continue
         snippet = mem.get("content", "")
@@ -1091,16 +1072,11 @@ def build_memory_injection_block(memories: List[Dict[str, Any]]) -> str:
     parts.append("-- END INJECTED MEMORIES --\n")
     return "\n".join(parts)
 
-# ---------------------------
-# Embedding helper (OpenAI) - guarded and synchronous (safe)
-# ---------------------------
+# Embedding helper
 def get_embedding_for_text(text: str):
-    if not text:
-        return None
-    if not USE_OPENAI_EMBED:
+    if not text or not USE_OPENAI_EMBED:
         return None
     try:
-        # prefer modern clients if installed; keep minimal fallback
         resp = openai.Embedding.create(input=[text], model=os.getenv("PHASE4_EMBED_MODEL", "text-embedding-3-small"))
         vec = resp["data"][0]["embedding"]
         return vec
@@ -1108,9 +1084,7 @@ def get_embedding_for_text(text: str):
         audit("openai_embed_failed", None, {"err": str(e)})
         return None
 
-# ---------------------------
-# Main orchestration (phase4_ask)
-# ---------------------------
+# Main orchestration
 def phase4_ask(user_input: str,
                session_id: Optional[str] = None,
                user_id: Optional[str] = None,
@@ -1126,7 +1100,7 @@ def phase4_ask(user_input: str,
     start = time.time()
     owner = user_id
     if not user_id:
-        owner = None  # no persistent memory
+        owner = None
 
     if phase3_ask is None:
         return {"answer": "[phase_3 missing] Core unavailable.", "explain": [], "memory_actions": [], "meta": {"latency_ms": int((time.time()-start)*1000), "fallback": True}}
@@ -1137,14 +1111,14 @@ def phase4_ask(user_input: str,
     if session_id:
         add_to_conversation_buffer(session_id, "user", user_input, owner)
 
-    # STM / session_stm
+    # STM
     session_stm = _kwargs.get("session_stm") or {}
     stm_block = ""
     if session_stm:
         bullets = [f"{k}: {v}" for k, v in session_stm.items()]
         stm_block = "-- STM --\n" + "\n".join(bullets) + "\n-- END STM --\n\n"
 
-    # determine injections (fast retrieval)
+    # determine injections
     if memory_mode == "off":
         inject_memories = []
     elif memory_mode == "manual":
@@ -1152,8 +1126,6 @@ def phase4_ask(user_input: str,
             inject_memories = retrieve_relevant_memories(user_input, owner, max_tokens_budget=MAX_INJECT_TOKENS)
         else:
             inject_memories = []
-    elif memory_mode == "watch":
-        inject_memories = retrieve_relevant_memories(user_input, owner, max_tokens_budget=MAX_INJECT_TOKENS)
     else:
         inject_memories = retrieve_relevant_memories(user_input, owner, max_tokens_budget=MAX_INJECT_TOKENS)
 
@@ -1174,13 +1146,12 @@ def phase4_ask(user_input: str,
     prompt_parts.append("\nUser: " + (user_input or ""))
     final_prompt = "\n\n".join([p for p in prompt_parts if p])
 
-    # Call reasoning core (phase3) - let it run; we don't block long here
+    # Call reasoning core (phase3)
     try:
         phase3_result = phase3_ask(final_prompt, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
         fallback = False
     except Exception as e:
         try:
-            # fallback try shorter input
             phase3_result = phase3_ask(user_input, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
             fallback = True
         except Exception as e2:
@@ -1192,14 +1163,17 @@ def phase4_ask(user_input: str,
     if session_id:
         add_to_conversation_buffer(session_id, "assistant", answer_text, owner)
 
-    # mark used memories (update last_used)
+    # mark used memories (update last_used) asynchronously and non-blocking
     used_ids = []
-    for m in inject_memories[:2]:
-    threading.Thread(
-        target=update_memory_last_used,
-        args=(m["id"],),
-        daemon=True
-    ).start()
+    for m in inject_memories:
+        mid = m.get("id")
+        if not mid:
+            continue
+        used_ids.append(mid)
+        try:
+            threading.Thread(target=update_memory_last_used, args=(mid,), daemon=True).start()
+        except Exception:
+            pass
 
     # extract and store candidate memories (non-blocking writes)
     candidates = extract_candidates(user_input, answer_text)
@@ -1247,7 +1221,6 @@ def phase4_ask(user_input: str,
             "metadata": {"origin": "phase_4_extractor"}
         }
 
-        # set expiry
         if target == "STM":
             expires = datetime.utcnow() + timedelta(days=STM_EXPIRE_DAYS)
             mem_obj["expires_at"] = expires.isoformat()
@@ -1260,13 +1233,11 @@ def phase4_ask(user_input: str,
             expires = datetime.utcnow() + timedelta(days=EM_DEFAULT_DAYS)
             mem_obj["expires_at"] = expires.isoformat()
 
-        # write in background to avoid blocking request
         try:
             t = threading.Thread(target=_insert_memory_bg_safe, args=(mem_obj,), daemon=True)
             t.start()
             memory_actions.append({"id": mem_id, "action": "queued_bg", "type": target, "owner": mem_owner, "summary": mem_obj["content"][:140]})
         except Exception as e:
-            # synchronous fallback
             try:
                 insert_memory(mem_obj)
                 memory_actions.append({"id": mem_id, "action": "created", "type": target, "owner": mem_owner, "summary": mem_obj["content"][:140]})
@@ -1274,6 +1245,12 @@ def phase4_ask(user_input: str,
                 enqueue_retry({"op": "insert_memory", "candidate": mem_obj})
                 memory_actions.append({"id": None, "action": "queued", "detail": str(ee)})
                 audit("write_failed", None, {"error": str(ee)})
+
+    # cleanup expired memories async
+    try:
+        threading.Thread(target=cleanup_expired_memories, daemon=True).start()
+    except Exception:
+        pass
 
     explain = []
     for m in inject_memories:
@@ -1295,22 +1272,26 @@ def _insert_memory_bg_safe(mem_obj):
         enqueue_retry({"op": "insert_memory", "candidate": mem_obj})
         audit("write_failed_bg", None, {"error": str(e)})
 
-# ---------------------------
 # Cleanup expired memories
-# ---------------------------
 def cleanup_expired_memories():
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 cur.execute("DELETE FROM memories WHERE expires_at IS NOT NULL AND expires_at < %s", (datetime.utcnow(),))
                 deleted = cur.rowcount
+                conn.commit()
+                cur.close()
+                _pg_putconn(conn)
             else:
+                cur = conn.cursor()
                 now = now_ts()
                 cur.execute("DELETE FROM memories WHERE expires_at IS NOT NULL AND expires_at < ?", (now,))
                 deleted = cur.rowcount
-            conn.commit()
+                conn.commit()
+                cur.close()
+                conn.close()
             if deleted:
                 audit("cleanup_expired", None, {"deleted": deleted})
                 try:
@@ -1319,7 +1300,6 @@ def cleanup_expired_memories():
                     pass
         except Exception as e:
             audit("cleanup_failed", None, {"error": str(e)})
-        finally:
             try:
                 if PG_AVAILABLE and DB_URL:
                     _pg_putconn(conn)
@@ -1328,9 +1308,7 @@ def cleanup_expired_memories():
             except Exception:
                 pass
 
-# ---------------------------
-# CLI tester (for local debug)
-# ---------------------------
+# CLI tester (local)
 if __name__ == "__main__":
     print("ZULTX phase_4 hardened tester (sqlite/postgres compatible)")
     while True:
@@ -1349,7 +1327,6 @@ if __name__ == "__main__":
                     print(f"{r['id'][:8]} owner={owner_label} {r['type']} score={r.get('memory_score') or 0:.3f} freq={r.get('frequency')} content={r['content'][:80]}")
                 continue
             if ui.lower().startswith("conv "):
-                # conv <session_id>
                 sid = ui.split(maxsplit=1)[1].strip()
                 print(get_recent_chat_block(sid))
                 continue
@@ -1359,17 +1336,22 @@ if __name__ == "__main__":
                 if mem:
                     with _db_lock:
                         conn = get_db_conn()
-                        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
-                        if PG_AVAILABLE and DB_URL:
-                            cur.execute("DELETE FROM memories WHERE id = %s", (target,))
-                        else:
-                            cur.execute("DELETE FROM memories WHERE id = ?", (target,))
-                        conn.commit()
-                        if PG_AVAILABLE and DB_URL:
-                            _pg_putconn(conn)
-                        else:
-                            conn.close()
-                    print("Deleted memory", target)
+                        try:
+                            if PG_AVAILABLE and DB_URL:
+                                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                                cur.execute("DELETE FROM memories WHERE id = %s", (target,))
+                                conn.commit()
+                                cur.close()
+                                _pg_putconn(conn)
+                            else:
+                                cur = conn.cursor()
+                                cur.execute("DELETE FROM memories WHERE id = ?", (target,))
+                                conn.commit()
+                                cur.close()
+                                conn.close()
+                            print("Deleted memory", target)
+                        except Exception as e:
+                            print("delete failed:", e)
                     continue
                 print("No memory by that id; use listmem to inspect")
                 continue
