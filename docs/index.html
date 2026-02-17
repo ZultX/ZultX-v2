@@ -933,8 +933,7 @@ async function sendMessage(){
   aiDiv.className = 'msg ai thinking';
   aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
   chatArea.appendChild(aiDiv);
-
-  try{
+  try {
     const token = getToken();
     const sessionId = ensureSessionId();
 
@@ -943,11 +942,15 @@ async function sendMessage(){
       "X-Session-Id": sessionId
     };
 
-    if(token) headers["Authorization"] = "Bearer " + token;
+    if (token) {
+      headers["Authorization"] = "Bearer " + token;
+    }
+
     const res = await fetch(
       `${API_BASE}/ask?q=${encodeURIComponent(text)}`,
       {
-         method: "GET"
+        method: "GET",
+        headers: headers
       }
     );
 
