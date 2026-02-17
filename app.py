@@ -1,10 +1,8 @@
-# app.py
+# app.py (remade) — ZULTX server with robust conversation persistence
 """
 ZULTX — app with GREEN-PROTOCOL (Postgres auth + JWT + guest session support)
-- Requires DATABASE_URL env var (Postgres). No fallback — app will fail fast if DB unavailable.
-- Signup / Login (password hashing: bcrypt if available, fallback PBKDF2)
-- JWT created/verified with HMAC-SHA256 (no external JWT lib required)
-- /ask uses JWT user identity (if present) otherwise uses guest session_id
+This edition fixes the conversations schema to be compatible with phase4.py
+and guarantees the in-DB conversation buffer is written for both user and assistant messages.
 """
 import os
 import glob
@@ -15,7 +13,7 @@ import base64
 import hashlib
 import traceback
 from typing import Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import FastAPI, Query, Body, HTTPException, Request, Header
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
@@ -47,6 +45,7 @@ except Exception:
 # Prefer phase_4 if available, then fall back to phase_3
 ASK_FUNC = None
 try:
+    # note: user provided phase4 as "phase4" file; import if present
     from phase4 import phase4_ask as phase4_ask_func
     ASK_FUNC = phase4_ask_func
     print("[ZULTX] Using phase_4.phase4_ask()")
@@ -80,7 +79,7 @@ if not os.path.exists(example_path):
 # -------------------------
 # FastAPI init
 # -------------------------
-app = FastAPI(title="ZULTX — v1.4")
+app = FastAPI(title="ZULTX — v1.4 (patched)")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -95,7 +94,6 @@ if os.path.isdir("static"):
 # -------------------------
 # Postgres pool & init (fail-fast)
 # -------------------------
-# Small pool; tune via env if necessary
 PG_POOL_MIN = int(os.getenv("PG_POOL_MIN", "1"))
 PG_POOL_MAX = int(os.getenv("PG_POOL_MAX", "6"))
 
@@ -121,7 +119,12 @@ def _put_conn(conn):
         except Exception:
             pass
 
-# Schema - users + conversations (safe, non-destructive)
+# -------------------------
+# Schema - users + conversations (shared with phase4)
+# -------------------------
+# IMPORTANT: We include both owner (used by phase4) and user_id (used by app)
+# and both ts and created_at timestamps so both sides are compatible.
+# If you already have an older conversations table on Postgres, drop it (or ALTER to add missing columns).
 _INIT_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -133,16 +136,21 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 
+-- Unified conversations schema:
+-- includes: id, session_id, user_id, owner, role, content, created_at, ts
 CREATE TABLE IF NOT EXISTS conversations (
     id BIGSERIAL PRIMARY KEY,
     session_id TEXT,
     user_id TEXT,
+    owner TEXT,
     role TEXT,
     content TEXT,
-    created_at TIMESTAMP
+    created_at TIMESTAMP,
+    ts TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_conv_session_ts ON conversations (session_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conv_session_ts ON conversations (session_id, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_conv_session_created_at ON conversations (session_id, created_at DESC);
 """
 
 def initialize_db():
@@ -420,7 +428,7 @@ def tip(payload: dict = Body(...)):
 # -------------------------
 def extract_user_and_session(request: Request) -> Tuple[Optional[str], Optional[str]]:
     """
-    Returns (owner_user_id_or_guest, session_id_or_none)
+    Returns (owner_user_or_guest, session_id_or_none)
     Priority:
       - Bearer JWT => owner = user_id (sub)
       - else session_id => owner = 'guest:<session_id>'
@@ -441,6 +449,46 @@ def extract_user_and_session(request: Request) -> Tuple[Optional[str], Optional[
 
     owner = user_id if user_id else (f"guest:{session_id}" if session_id else None)
     return owner, session_id
+
+# -------------------------
+# Conversation persistence helper (keeps schema compatible with phase4)
+# -------------------------
+def persist_conversation(session_id: Optional[str], owner: Optional[str], role: str, content: str, ts: Optional[datetime] = None):
+    """
+    Writes a row into conversations. We keep both 'owner' (free-form used by phase4)
+    and 'user_id' (real authenticated user id or NULL).
+    """
+    ts_val = ts or datetime.utcnow()
+    # user_id is None for guests of the form "guest:<session_id>"
+    user_id_col = None
+    if owner and not str(owner).startswith("guest:"):
+        user_id_col = owner
+
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO conversations (session_id, user_id, owner, role, content, created_at, ts) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                (session_id, user_id_col, owner, role, content, ts_val, ts_val)
+            )
+            conn.commit()
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            # non-fatal — log and continue
+            print("[persist_conversation] insert error:", e)
+        finally:
+            try:
+                cur.close()
+            except Exception:
+                pass
+            _put_conn(conn)
+    except Exception as e:
+        # pool / connectivity problem
+        print("[persist_conversation] DB error:", e)
 
 # -------------------------
 # Local fallback ask
@@ -503,11 +551,20 @@ async def ask_get(
     try:
         owner, session_id = extract_user_and_session(request)
 
+        # Debugging log for production troubleshooting (will appear in Railway logs)
+        print(f"[ask] owner={owner} session_id={session_id} memory_mode={memory_mode} using_phase4={ASK_FUNC is not None}")
+
+        # persist user's message (so convo buffer is available to phase4/db)
+        try:
+            persist_conversation(session_id, owner, "user", q, ts=datetime.utcnow())
+        except Exception:
+            pass
+
         # Build kwargs to match phase4_ask signature (it expects user_input, session_id, user_id, ...)
         kwargs = {
             "user_input": q,
             "session_id": session_id,
-            "user_id": owner,
+            "user_id": owner,            # phase4 expects the 'owner' string here (can be guest:... or user id)
             "memory_mode": memory_mode,
             "mode": mode,
             "temperature": temperature,
@@ -532,6 +589,13 @@ async def ask_get(
             result = local_fallback_ask_plain(q)
 
         text = await normalize_result_to_text(result)
+
+        # persist assistant response
+        try:
+            persist_conversation(session_id, owner, "assistant", text, ts=datetime.utcnow())
+        except Exception:
+            pass
+
     except Exception as e:
         traceback.print_exc()
         return JSONResponse({"answer": f"ZULTX error: {str(e)}"}, status_code=500)
