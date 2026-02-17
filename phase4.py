@@ -252,15 +252,18 @@ def clamp(v, a=0.0, b=1.0):
 # DB connection helpers
 # ---------------------------
 def _pg_getconn():
-    """Get a connection from pool or direct conn (if pool absent)"""
+    """Get a connection from pool or direct conn (always dict cursor)"""
     if PG_POOL:
         try:
-            return PG_POOL.getconn()
+            conn = PG_POOL.getconn()
+            conn.autocommit = False
+            return conn
         except Exception:
-            # fallback to direct connect
             pass
+
     # fallback direct
-    conn = psycopg2.connect(DB_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg2.connect(DB_URL)
+    conn.autocommit = False
     return conn
 
 def _pg_putconn(conn):
@@ -295,7 +298,7 @@ def get_db_conn():
 def initialize_db():
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
                 cur.execute(_POSTGRES_INIT_SQL)
@@ -332,7 +335,7 @@ class SimpleRecall:
             start = time.time()
             rows = []
             conn = get_db_conn()
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 if PG_AVAILABLE and DB_URL:
                     cur.execute("SELECT id, owner, content FROM memories WHERE type IN ('CM','LTM')")
@@ -483,7 +486,7 @@ def audit(action: str, mem_id: Optional[str], payload: Dict[str, Any]):
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 ts = datetime.utcnow()
                 if PG_AVAILABLE and DB_URL:
@@ -512,7 +515,7 @@ def enqueue_retry(item: Dict[str, Any]):
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 ts = datetime.utcnow()
                 if PG_AVAILABLE and DB_URL:
@@ -544,7 +547,7 @@ def persist_conversation(session_id: str, owner: Optional[str], role: str, conte
     try:
         with _db_lock:
             conn = get_db_conn()
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
             try:
                 if PG_AVAILABLE and DB_URL:
                     cur.execute("INSERT INTO conversations (session_id, owner, role, content, ts) VALUES (%s,%s,%s,%s,%s)",
@@ -570,7 +573,7 @@ def persist_conversation(session_id: str, owner: Optional[str], role: str, conte
 def load_recent_messages_from_db(owner: str, session_id: str, limit: int = 7):
     try:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         results = []
         try:
             if PG_AVAILABLE and DB_URL:
@@ -603,7 +606,7 @@ def load_recent_messages_from_db(owner: str, session_id: str, limit: int = 7):
 def insert_memory(mem: Dict[str, Any]) -> str:
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
                 cur.execute("""
@@ -701,30 +704,91 @@ def _pine_upsert_safe(mem):
         audit("pinecone_embed_err", mem.get("id"), {"err": str(e)})
 
 def update_memory_last_used(mem_id: str):
+    """
+    Safely updates last_used, increments frequency,
+    and recomputes memory_score.
+
+    Works for:
+      - Postgres (RealDictCursor)
+      - SQLite (Row)
+    """
+
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(
+            cursor_factory=psycopg2.extras.RealDictCursor
+        ) if PG_AVAILABLE and DB_URL else conn.cursor()
+
         try:
+            # Fetch required fields
             if PG_AVAILABLE and DB_URL:
-                cur.execute("SELECT importance, confidence, frequency, created_at FROM memories WHERE id = %s", (mem_id,))
-                row = cur.fetchone()
+                cur.execute(
+                    "SELECT importance, confidence, frequency, created_at "
+                    "FROM memories WHERE id = %s",
+                    (mem_id,)
+                )
             else:
-                cur.execute("SELECT importance, confidence, frequency, created_at FROM memories WHERE id = ?", (mem_id,))
-                row = cur.fetchone()
+                cur.execute(
+                    "SELECT importance, confidence, frequency, created_at "
+                    "FROM memories WHERE id = ?",
+                    (mem_id,)
+                )
+
+            row = cur.fetchone()
+
             if not row:
-                return
-            importance = float(row["importance"] if isinstance(row, dict) else row[0] or 0.5)
-            confidence = float(row["confidence"] if isinstance(row, dict) else row[1] or 0.5)
-            frequency = int(row["frequency"] if isinstance(row, dict) else row[2] or 1) + 1
-            created_at = (row["created_at"] if isinstance(row, dict) else row[3])
-            new_score = compute_memory_score(importance, frequency, created_at, confidence)
-            if PG_AVAILABLE and DB_URL:
-                cur.execute("UPDATE memories SET last_used = %s, frequency = %s, memory_score = %s WHERE id = %s",
-                            (datetime.utcnow(), frequency, new_score, mem_id))
+                return  # memory not found
+
+            # Normalize row access (dict OR sqlite Row)
+            if isinstance(row, dict):
+                importance = row.get("importance")
+                confidence = row.get("confidence")
+                frequency = row.get("frequency")
+                created_at = row.get("created_at")
             else:
-                cur.execute("UPDATE memories SET last_used = ?, frequency = ?, memory_score = ? WHERE id = ?",
-                            (now_ts(), frequency, new_score, mem_id))
+                importance, confidence, frequency, created_at = row
+
+            # Safe defaults (NO `or` usage)
+            importance = float(importance) if importance is not None else 0.5
+            confidence = float(confidence) if confidence is not None else 0.5
+            frequency = int(frequency) if frequency is not None else 1
+
+            # Increment usage
+            frequency += 1
+
+            # Recompute score
+            new_score = compute_memory_score(
+                importance,
+                frequency,
+                created_at,
+                confidence
+            )
+
+            # Update DB
+            if PG_AVAILABLE and DB_URL:
+                cur.execute(
+                    "UPDATE memories "
+                    "SET last_used = %s, frequency = %s, memory_score = %s "
+                    "WHERE id = %s",
+                    (datetime.utcnow(), frequency, new_score, mem_id)
+                )
+            else:
+                cur.execute(
+                    "UPDATE memories "
+                    "SET last_used = ?, frequency = ?, memory_score = ? "
+                    "WHERE id = ?",
+                    (now_ts(), frequency, new_score, mem_id)
+                )
+
             conn.commit()
+
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+
         finally:
             try:
                 if PG_AVAILABLE and DB_URL:
@@ -733,12 +797,18 @@ def update_memory_last_used(mem_id: str):
                     conn.close()
             except Exception:
                 pass
-    audit("update_last_used", mem_id, {"ts": now_ts(), "frequency": frequency, "memory_score": new_score})
+
+    # Audit outside lock
+    audit("update_last_used", mem_id, {
+        "ts": now_ts(),
+        "frequency": frequency,
+        "memory_score": new_score
+    })
 
 def delete_owner_name_memories(owner: Optional[str]):
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
                 if owner is None:
@@ -765,7 +835,7 @@ def delete_owner_name_memories(owner: Optional[str]):
 
 def get_memory(mem_id: str) -> Optional[Dict[str, Any]]:
     conn = get_db_conn()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
     try:
         if PG_AVAILABLE and DB_URL:
             cur.execute("SELECT * FROM memories WHERE id = %s", (mem_id,))
@@ -812,7 +882,7 @@ def get_memory(mem_id: str) -> Optional[Dict[str, Any]]:
 
 def list_memories(limit: int = 50, owner: Optional[str] = None) -> List[Dict[str, Any]]:
     conn = get_db_conn()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
     try:
         out = []
         if PG_AVAILABLE and DB_URL:
@@ -1233,7 +1303,7 @@ def _insert_memory_bg_safe(mem_obj):
 def cleanup_expired_memories():
     with _db_lock:
         conn = get_db_conn()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
         try:
             if PG_AVAILABLE and DB_URL:
                 cur.execute("DELETE FROM memories WHERE expires_at IS NOT NULL AND expires_at < %s", (datetime.utcnow(),))
@@ -1291,7 +1361,7 @@ if __name__ == "__main__":
                 if mem:
                     with _db_lock:
                         conn = get_db_conn()
-                        cur = conn.cursor()
+                        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if PG_AVAILABLE and DB_URL else conn.cursor()
                         if PG_AVAILABLE and DB_URL:
                             cur.execute("DELETE FROM memories WHERE id = %s", (target,))
                         else:
