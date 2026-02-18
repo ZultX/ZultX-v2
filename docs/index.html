@@ -526,7 +526,7 @@ body{
   from{
     transform: translateY(6px);
     opacity:0;
-  } k
+  }
   to{
     transform: translateY(0);
     opacity:1;
@@ -672,11 +672,7 @@ html.light .ai-pulse{
   backdrop-filter:blur(6px);
   border:1px solid rgba(255,215,0,0.08);
   }
-header{
-  position:relative;
-  z-index:2000;
-}
-
+  
 .top-tip,
 .mobileMenuBtn,
 #tempChatBtn{
@@ -693,16 +689,16 @@ header{
   border-radius:50%;
   font-size:20px;
 }
-body.light .side{
+html.light .side{
   background:#ffffff;
   color:#111111;
 }
 
-body.light .side .small-muted{
+html.light .side .small-muted{
   color:#555;
 }
 
-body.light .side .convo-item{
+html.light .side .convo-item{
   background:#f3f3f3;
   color:#111;
 }
@@ -740,7 +736,7 @@ body.light .side .convo-item{
   <div class="header-actions">
     <div id="themeToggle" class="top-tip" title="Toggle light / dark"><span id="themeIcon">🌗</span></div>
     <div id="topTipBtn" class="top-tip"><span>🍏</span><strong style="margin-left:6px">Tip</strong></div>
-    <div id="lettersBtn" style="padding:8px 10px;border-radius:10px;background:var(--glass);cursor:pointer">✉️ Letter</div>
+    <div id="lettersBtn" class="top-tip" title="Letters">✉️</div>
     <div id="shareBtn" class="top-tip" title="Share ZultX"><span>🔗</span><strong style="margin-left:6px">Share</strong></div>
 
 
@@ -880,7 +876,11 @@ function updateTempIconVisibility(){
     tempChatBtn.style.display = "flex";
   }
   }
-  
+
+function generateChatTitle(text){
+  const words = text.split(" ").slice(0,5).join(" ");
+  return words.length > 30 ? words.slice(0,30)+"..." : words;
+  }
 function makeConvoId(prefix='convo'){ return `${prefix}_${Date.now()}`; }
 
 function getAllHistory(){
@@ -1014,13 +1014,18 @@ function addBubble(kind, text, stream = true){
   chatArea.appendChild(d);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
- 
+function addUserMsg(text){
+  addBubble('user', text);
+  saveMessageToHistory(currentConversationId, 'user', text);
+  updateTempIconVisibility();
+}
 
-function addUserMsg(text){ addBubble('user', text); saveMessageToHistory(currentConversationId, 'user', text); }
-updateTempIconVisibility();
+function addAiMsg(text){
+  addBubble('ai', text);
+  saveMessageToHistory(currentConversationId, 'ai', text);
+  updateTempIconVisibility();
+  }
 
-function addAiMsg(text){ addBubble('ai', text); saveMessageToHistory(currentConversationId, 'ai', text); }
-updateTempIconVisibility();
 
 function addSystemMsg(text){
   const d = document.createElement('div'); d.style.textAlign='center'; d.style.color='var(--muted)'; d.textContent = text; chatArea.appendChild(d); chatArea.scrollTop = chatArea.scrollHeight;
@@ -1062,8 +1067,9 @@ async function sendMessage(){
   const start = performance.now();
 
   if(!currentConversationId){
-    currentConversationId = makeConvoId();
-    localSaveInit(currentConversationId);
+  const title = generateChatTitle(text);
+  currentConversationId = title;
+  localSaveInit(currentConversationId);
   }
 
   addUserMsg(text);
