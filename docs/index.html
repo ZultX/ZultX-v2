@@ -689,6 +689,11 @@ html.light .ai-pulse{
   border-radius:50%;
   font-size:20px;
 }
+@media (max-width:600px){
+  .modal{
+    transform:none;
+  }
+  }
 html.light .side{
   background:#ffffff;
   color:#111111;
@@ -1068,8 +1073,11 @@ async function sendMessage(){
 
   if(!currentConversationId){
   const title = generateChatTitle(text);
-  currentConversationId = title;
+  currentConversationId = "chat_" + Date.now();
   localSaveInit(currentConversationId);
+  const all = getAllHistory();
+  all[currentConversationId].id = title;
+  setAllHistory(all);
   }
 
   addUserMsg(text);
