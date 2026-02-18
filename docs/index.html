@@ -672,7 +672,17 @@ html.light .ai-pulse{
   backdrop-filter:blur(6px);
   border:1px solid rgba(255,215,0,0.08);
   }
+header{
+  position:relative;
+  z-index:2000;
+}
 
+.top-tip,
+.mobileMenuBtn,
+#tempChatBtn{
+  position:relative;
+  z-index:2100;
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -839,6 +849,15 @@ let tempMode = false; // if true, don't save to local history
 let longPressTimer = null;
 
 /* -------------- HISTORY STORAGE -------------- */
+function updateTempIconVisibility(){
+  const hasMessages = chatArea.querySelector(".msg");
+  if(hasMessages){
+    tempChatBtn.style.display = "none";
+  }else{
+    tempChatBtn.style.display = "flex";
+  }
+  }
+  
 function makeConvoId(prefix='convo'){ return `${prefix}_${Date.now()}`; }
 
 function getAllHistory(){
@@ -975,7 +994,11 @@ function addBubble(kind, text, stream = true){
  
 
 function addUserMsg(text){ addBubble('user', text); saveMessageToHistory(currentConversationId, 'user', text); }
+updateTempIconVisibility();
+
 function addAiMsg(text){ addBubble('ai', text); saveMessageToHistory(currentConversationId, 'ai', text); }
+updateTempIconVisibility();
+
 function addSystemMsg(text){
   const d = document.createElement('div'); d.style.textAlign='center'; d.style.color='var(--muted)'; d.textContent = text; chatArea.appendChild(d); chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -1083,6 +1106,7 @@ startBtn.addEventListener('click', ()=> {
   centerScreen.style.display = 'none';
   chatArea.style.display = 'flex';
   addSystemMsg('New chat started.');
+  updateTempIconVisibility();
   refreshHistoryList();
 });
 
@@ -1094,6 +1118,7 @@ newChatBtn.addEventListener('click', ()=> {
   centerScreen.style.display = 'none';
   chatArea.style.display = 'flex';
   addSystemMsg('New chat started.');
+  updateTempIconVisibility();
   refreshHistoryList();
 });
 
@@ -1356,6 +1381,7 @@ refreshHistoryList();
 /* show centerScreen for first load */
 centerScreen.style.display = 'flex';
 chatArea.style.display = 'none';
+updateTempIconVisibility();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
