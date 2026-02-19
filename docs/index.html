@@ -746,6 +746,19 @@ html.light .side .convo-item{
   background:#f3f3f3;
   color:#111;
 }
+@media (min-width:881px){
+  #mobileMenuBtn{
+    display:none !important;
+  }
+}
+#z-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  z-index:8000;
+}
+
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -906,8 +919,6 @@ html.light .side .convo-item{
 
 <!-- libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-marked.setOptions({ gfm:true, breaks:true, smartLists:true, smartypants:true });
-
 /* ---------- Config & DOM refs ---------- */
 const API_BASE = "https://zultx.up.railway.app";
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1386,7 +1397,6 @@ function openPremium(mode='login'){
   p_msg.textContent = '';
   p_username.value = ''; p_password.value = '';
   premiumAuth.style.display = 'flex'; premiumAuth.classList.add('active');
-  showOverlay();
 }
 function closePremium(){
   premiumAuth.classList.remove('active'); premiumAuth.style.display = 'none';
