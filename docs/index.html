@@ -105,7 +105,7 @@ html.dark header{
 .temp-chat-icon svg{width:20px;height:20px;display:block;}
 
 /* App layout */
-.app{display:flex;min-height:calc(100vh - var(--header-h));position:relative}
+.app{display:flex;min-height:100vh;position:relative}
 .side{
   position:fixed;
   top:var(--header-h);
@@ -490,8 +490,8 @@ body{
   padding:12px;
   border-radius:10px;
   border:1px solid rgba(255,215,0,0.3);
-  background: #ffffff;
-  color: #111;
+  background:var(--bg);
+  color:var(--text);
   font-weight:600;
   }
 .premium-actions { display:flex; gap:10px; margin-top:10px; align-items:center; }
@@ -797,7 +797,6 @@ html.light .side .convo-item{
         <path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,215,0,0.06)" stroke-width="2"/>
       </svg>
-      <div class="mini-theme" id="tempMiniTheme">🌗</div>
     </div>
 
     <div class="version-badge">v1.4</div>
@@ -919,6 +918,7 @@ html.light .side .convo-item{
 
 <!-- libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
 /* ---------- Config & DOM refs ---------- */
 const API_BASE = "https://zultx.up.railway.app";
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -1001,8 +1001,6 @@ function updateThemeVisuals(){
   // sideTheme button icon
   if(sideTheme) sideTheme.textContent = isLight ? '🌞' : '🌙';
   // temp mini theme inside the small circle on mobile
-  const mini = document.getElementById('tempMiniTheme');
-  if(mini) mini.textContent = isLight ? '🌞' : '🌙';
   // code block highlighting re-check if present
 }
 sideTheme && sideTheme.addEventListener('click', toggleTheme);
@@ -1468,7 +1466,7 @@ function loggedIn(){ return !!getToken(); }
   const accBtn = document.getElementById('accBtn');
   accBtn && accBtn.addEventListener('click', ()=>{
     if(loggedIn()){
-      if(confirm("Log out?")){ setToken(null); refreshAccountUI(); alert('Logged out'); }
+      if(confirm("Log out?")){ setToken(null); refreshAccountUI(); p_msg.textContent = 'Logged out'; setTimeout(()=> p_msg.textContent='',1500); }
     } else openPremium('login');
   });
 })();
