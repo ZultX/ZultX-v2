@@ -1164,26 +1164,65 @@ function getAllHistory(){
   try{ return JSON.parse(localStorage.getItem('zultx_history') || '{}'); } catch(e){ return {}; }
 }
 function setAllHistory(obj){ localStorage.setItem('zultx_history', JSON.stringify(obj)); }
-
+  
 function refreshHistoryList(){
   const all = getAllHistory();
   const keys = Object.keys(all).sort((a,b)=> all[b].created - all[a].created);
   historyList.innerHTML = '';
+
   for(const k of keys){
     const item = all[k];
+
+    // 🔥 GOD-TIER TITLE LOGIC
+    const firstUserMsg =
+      item.messages?.find(m => m.role === 'user')?.text || '';
+
+    const title =
+      firstUserMsg.length > 36
+        ? firstUserMsg.slice(0,36) + '…'
+        : firstUserMsg || 'New Chat';
+
+    // Optional: preview line (last message)
+    const last =
+      item.messages?.[item.messages.length - 1] || null;
+
+    const preview =
+      last?.text?.length > 48
+        ? last.text.slice(0,48) + '…'
+        : last?.text || 'New chat';
+
     const el = document.createElement('div');
     el.className = 'history-item';
-    const last = (item.messages && item.messages[item.messages.length-1]) || null;
-    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-weight:700">${item.id}</div><div class="meta">${last? last.text.slice(0,48) : 'New chat'}</div></div><div class="small-muted">${new Date(item.created).toLocaleString()}</div>`;
+
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-weight:700">${title}</div>
+        <div class="meta">${preview}</div>
+      </div>
+      <div class="small-muted">
+        ${new Date(item.created).toLocaleString()}
+      </div>
+    `;
+
     el.onclick = ()=> openConversation(k);
-    el.oncontextmenu = (e)=> { e.preventDefault(); confirmAndDelete(k); };
+
+    el.oncontextmenu = (e)=> {
+      e.preventDefault();
+      confirmAndDelete(k);
+    };
+
     el.addEventListener('touchstart', ()=>{
       this.pressTimer = setTimeout(()=> confirmAndDelete(k), 650);
     }, {passive:true});
-    el.addEventListener('touchend', ()=> { clearTimeout(this.pressTimer); }, {passive:true});
+
+    el.addEventListener('touchend', ()=>{
+      clearTimeout(this.pressTimer);
+    }, {passive:true});
+
     historyList.appendChild(el);
   }
 }
+
 
 /* ---------- messaging UI helpers ---------- */
 function addBubble(kind, text, stream = true){
