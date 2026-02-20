@@ -1,79 +1,117 @@
 # phase_1.py
 """
-ZULTX Phase 1 — IMMORTAL BRAIN ORCHESTRA (production-ready template)
-- Adapter-based model routing & failover
-- Intent-aware routing (cheap/small vs heavy/reasoning vs embeddings vs multimodal)
-- Streaming support (generators) and non-stream returns
-- Backoff + health checks + simple soft-rate-limit
-- Env-driven keys (RAILWAY-friendly)
-- Add adapters by subclassing ModelAdapter and registering in router
+ZULTX Phase 1 — IMMORTAL BRAIN ORCHESTRA (final)
+- Multi-adapter router (OpenRouter models + Mistral direct + fallbacks)
+- Intent + complexity detection (fast / normal / heavy / multimodal / embed)
+- Streaming and non-stream returns (generators)
+- TokenBucket soft-rate-limits per-adapter
+- Health checks, retries, exponential backoff
+- Simple metrics & hooks for observability (no external libs)
+- Env-driven config (RAILWAY-friendly). Only dependency: requests
 """
+from __future__ import annotations
 import os
 import time
 import json
-import traceback
-import requests
-import threading
 import math
-from typing import Generator, Optional, Dict, Any, List, Callable, Union
+import threading
+import traceback
+from typing import Generator, Optional, List, Union, Callable, Dict
+import requests
 
-# -----------------------
-# Config from environment
-# -----------------------
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
-GOOGLE_API_KEY  = os.getenv("GOOGLE_API_KEY")   # for Gemini via Google Generative API / Vertex
-ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY")
-COHERE_API_KEY  = os.getenv("COHERE_API_KEY")
-# etc. Add others like PINECONE_API_KEY, HF_API_KEY, etc.
+# --------------------
+# Config (env-friendly)
+# --------------------
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")  # optional fallback for some use-cases
 
 DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "30"))
 MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "3"))
+BACKOFF_BASE = float(os.getenv("PHASE1_BACKOFF_BASE", "0.35"))
+RATE_PER_SEC = float(os.getenv("PHASE1_RATE_PER_SEC", "1.0"))
+RATE_CAPACITY = float(os.getenv("PHASE1_RATE_CAPACITY", "5.0"))
 
-# -----------------------
-# Base exceptions
-# -----------------------
+# Observability hooks (callable): optional functions you can inject at runtime
+# e.g. set Phase1.metrics_hook = lambda event, meta: print(...)
+metrics_hook: Optional[Callable[[str, Dict], None]] = None
+health_check_hook: Optional[Callable[[], Dict[str, bool]]] = None
+
+def _emit_metric(event: str, meta: Dict = None):
+    try:
+        if metrics_hook:
+            metrics_hook(event, meta or {})
+        else:
+            # lightweight default log (avoid noisy logs in production)
+            print(f"[phase1][metric] {event} {json.dumps(meta or {}, default=str)}")
+    except Exception:
+        pass
+
+# --------------------
+# Exceptions
+# --------------------
 class ModelFailure(Exception):
     pass
 
-# -----------------------
-# Intent detection (very small rule-based)
-# -----------------------
+# --------------------
+# Utilities
+# --------------------
+def safe_json_load(s: str):
+    try:
+        return json.loads(s)
+    except Exception:
+        return None
+
+def now_s():
+    return time.time()
+
+# --------------------
+# Intent & Complexity Detection
+# --------------------
 def detect_intent(prompt: str) -> str:
-    """
-    Return one of:
-      - 'small'      : small replies, greetings, quick chit-chat
-      - 'reason'     : heavy reasoning, code, planning, long-form answers
-      - 'embed'      : compute embeddings
-      - 'multimodal' : image or multimodal prompts (if "image", "photo", "show me", etc.)
-    """
     txt = (prompt or "").strip().lower()
     if not txt:
         return "small"
-    if any(w in txt for w in ["embedding", "embed", "vectorize", "vector"]):
+    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector"]):
         return "embed"
-    if any(w in txt for w in ["image", "photo", "show me", "generate an image", "describe image", "img:"]):
+    if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision"]):
         return "multimodal"
-    # heuristics for heavy tasks
-    heavy_tokens = ["explain", "compare", "design", "optimize", "plan", "write", "implement", "debug", "proof"]
-    if len(txt) > 300 or sum(1 for t in heavy_tokens if t in txt) >= 1:
+    # heavy keywords
+    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis"]
+    score = 0
+    for t in heavy:
+        if t in txt:
+            score += 1
+    if len(txt) > 800 or score >= 1:
         return "reason"
-    # default fallback
+    if len(txt) > 250:
+        return "long"
     return "small"
 
-# -----------------------
-# Simple Token Bucket limiter (soft, per-adapter)
-# -----------------------
+def detect_complexity(prompt: str) -> str:
+    intent = detect_intent(prompt)
+    if intent == "reason":
+        return "heavy"
+    if intent == "long":
+        return "normal"
+    if intent in ("multimodal", "embed"):
+        return intent
+    return "fast"
+
+# --------------------
+# Simple Token Bucket (per-adapter)
+# --------------------
 class TokenBucket:
-    def __init__(self, rate_per_sec: float, capacity: float):
-        self.rate = rate_per_sec
-        self.capacity = capacity
-        self._tokens = capacity
-        self._last = time.time()
+    def __init__(self, rate_per_sec: float = RATE_PER_SEC, capacity: float = RATE_CAPACITY):
+        self.rate = float(rate_per_sec)
+        self.capacity = float(capacity)
+        self._tokens = float(capacity)
+        self._last = now_s()
         self._lock = threading.Lock()
-    def consume(self, amount=1.0) -> bool:
+
+    def consume(self, amount: float = 1.0) -> bool:
         with self._lock:
-            now = time.time()
+            now = now_s()
             delta = now - self._last
             self._last = now
             self._tokens = min(self.capacity, self._tokens + delta * self.rate)
@@ -82,288 +120,334 @@ class TokenBucket:
                 return True
             return False
 
-# -----------------------
-# Abstract Adapter
-# -----------------------
+# --------------------
+# Adapter Base
+# --------------------
 class ModelAdapter:
-    name: str = "adapter"
-    supports_stream: bool = False
-    rate_limiter: Optional[TokenBucket] = None
+    name = "adapter"
+    supports_stream = False
 
     def __init__(self):
-        # default: generous rate
-        self.rate_limiter = TokenBucket(rate_per_sec=1.0, capacity=5.0)
+        self.bucket = TokenBucket()
+        self.last_health = 0.0
+        self._healthy = True
 
     def check_ready(self) -> bool:
-        """Optional health-check or quick config check. Return True if adapter is ready."""
         return True
 
+    def health(self) -> bool:
+        # lightweight health marker; adapters can override with real checks
+        return self._healthy
+
+    def mark_unhealthy(self):
+        self._healthy = False
+        self.last_health = now_s()
+
     def generate(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT) -> Union[str, Generator[str, None, None]]:
-        """
-        Return string (non-stream) or generator (stream=True).
-        Raise ModelFailure on error.
-        """
         raise NotImplementedError
 
-    def _consume_slot(self) -> bool:
-        if not self.rate_limiter:
-            return True
-        return self.rate_limiter.consume()
-
-# -----------------------
-# Concrete adapters
-# (examples; minimal implementations using requests)
-# -----------------------
-class MistralAdapter(ModelAdapter):
-    name = "mistral"
+# --------------------
+# OpenRouter Adapter (generic)
+# --------------------
+class OpenRouterAdapter(ModelAdapter):
+    name = "openrouter"
     supports_stream = True
 
-    def __init__(self, api_key: Optional[str]):
+    def __init__(self, model_name: str, api_key: Optional[str] = None):
         super().__init__()
-        self.api_key = api_key
-        self.endpoint = "https://api.mistral.ai/v1/chat/completions"
+        self.model = model_name
+        self.key = api_key or OPENROUTER_KEY
+        self.endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
     def check_ready(self):
-        return bool(self.api_key)
+        return bool(self.key and self.model)
 
-    def generate(self, prompt, stream=False, timeout=DEFAULT_TIMEOUT):
+    def generate(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT):
         if not self.check_ready():
-            raise ModelFailure("Mistral API key missing")
-        if not self._consume_slot():
+            raise ModelFailure("openrouter-missing-key-or-model")
+        if not self.bucket.consume():
             raise ModelFailure("rate_limited")
+
         payload = {
-            "model": "mistral-large-latest",
+            "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": bool(stream)
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
         try:
-            r = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
-            r.raise_for_status()
+            resp = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
+            resp.raise_for_status()
             if not stream:
-                j = r.json()
-                # defensive: paths differ by provider
-                return j.get("choices", [{}])[0].get("message", {}).get("content", "") or j.get("output", {}).get("text", "")
-            # stream generator
+                j = resp.json()
+                # defensive: try common locations
+                content = None
+                try:
+                    content = j.get("choices", [{}])[0].get("message", {}).get("content")
+                except Exception:
+                    pass
+                if not content:
+                    content = j.get("output", {}).get("text") or j.get("choices", [{}])[0].get("text")
+                return content or ""
+            # streaming generator
             def gen():
-                for chunk in r.iter_lines(decode_unicode=True):
-                    if chunk:
-                        # Mistral stream may be chunked lines; return raw chunk (caller should parse)
-                        yield chunk
-                # ensure newline at end
-            return gen()
-        except Exception as e:
-            raise ModelFailure(f"Mistral error: {str(e)}")
-
-class OpenAIAdapter(ModelAdapter):
-    name = "openai"
-    supports_stream = True
-
-    def __init__(self, api_key: Optional[str]):
-        super().__init__()
-        self.api_key = api_key
-        self.endpoint = "https://api.openai.com/v1/chat/completions"
-
-    def check_ready(self):
-        return bool(self.api_key)
-
-    def generate(self, prompt, stream=False, timeout=DEFAULT_TIMEOUT):
-        if not self.check_ready():
-            raise ModelFailure("OpenAI API key missing")
-        if not self._consume_slot():
-            raise ModelFailure("rate_limited")
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        payload = {
-            "model": os.getenv("OPENAI_MODEL","gpt-4o-mini"),
-            "messages":[{"role":"user","content":prompt}],
-            "temperature": float(os.getenv("OPENAI_TEMPERATURE","0.2")),
-            "stream": bool(stream)
-        }
-        try:
-            r = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
-            r.raise_for_status()
-            if not stream:
-                j = r.json()
-                return j.get("choices", [{}])[0].get("message", {}).get("content", "")
-            def gen():
-                for line in r.iter_lines(decode_unicode=True):
-                    if not line:
+                for chunk in resp.iter_lines(decode_unicode=True):
+                    if not chunk:
                         continue
-                    # OpenAI stream yields "data: ..." lines
+                    s = chunk.strip()
+                    # openrouter streaming often uses data: lines
+                    if s.startswith("data: "):
+                        s = s[len("data: "):]
+                    if s == "[DONE]":
+                        break
                     try:
-                        s = line.strip()
-                        if s.startswith("data: "):
-                            s = s[len("data: "):]
-                        if s == "[DONE]":
-                            break
                         obj = json.loads(s)
-                        delta = obj.get("choices",[{}])[0].get("delta", {}).get("content")
+                        delta = obj.get("choices", [{}])[0].get("delta", {}).get("content")
                         if delta:
                             yield delta
                     except Exception:
-                        yield line
+                        # emit raw chunk as fallback
+                        yield s
+                return
             return gen()
         except Exception as e:
-            raise ModelFailure(f"OpenAI error: {str(e)}")
+            self.mark_unhealthy()
+            raise ModelFailure(f"openrouter-error: {e}")
 
-class GoogleGeminiAdapter(ModelAdapter):
-    name = "google_gemini"
-    supports_stream = False  # Generative API streaming model support varies
+# --------------------
+# Mistral Direct Adapter
+# --------------------
+class MistralAdapter(ModelAdapter):
+    name = "mistral-direct"
+    supports_stream = True
 
-    def __init__(self, api_key: Optional[str]):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__()
-        self.api_key = api_key
-        self.endpoint = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.key = api_key or MISTRAL_KEY
+        self.endpoint = "https://api.mistral.ai/v1/chat/completions"
 
     def check_ready(self):
-        return bool(self.api_key)
+        return bool(self.key)
 
-    def generate(self, prompt, stream=False, timeout=DEFAULT_TIMEOUT):
+    def generate(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT):
         if not self.check_ready():
-            raise ModelFailure("Google API key missing")
-        if not self._consume_slot():
+            raise ModelFailure("mistral-key-missing")
+        if not self.bucket.consume():
             raise ModelFailure("rate_limited")
-        # choose model via env
-        gmodel = os.getenv("GOOGLE_GEMINI_MODEL","gemini-pro")
-        url = f"{self.endpoint}/{gmodel}:generateContent?key={self.api_key}"
-        payload = {"prompt": {"text": prompt}}
+
+        payload = {"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "stream": bool(stream)}
+        headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
         try:
-            r = requests.post(url, json=payload, timeout=timeout)
-            r.raise_for_status()
-            j = r.json()
-            # output path depends on API; try several common ones
-            cand = j.get("candidates") or j.get("output") or []
-            if isinstance(cand, list) and len(cand):
-                # may be nested
-                part = cand[0]
-                if isinstance(part, dict):
-                    return part.get("content", {}).get("text", "") or part.get("text", "")
-                return str(part)
-            return j.get("output", {}).get("text", "") or json.dumps(j)
+            resp = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
+            resp.raise_for_status()
+            if not stream:
+                j = resp.json()
+                # Mistral returns choices[0].message.content in new API
+                return j.get("choices", [{}])[0].get("message", {}).get("content") or j.get("output", {}).get("text", "") or ""
+            def gen():
+                for chunk in resp.iter_lines(decode_unicode=True):
+                    if not chunk:
+                        continue
+                    # Mistral streaming chunks may be chunks of JSON or plain text
+                    line = chunk.strip()
+                    try:
+                        j = json.loads(line)
+                        # try common delta path
+                        delta = j.get("choices", [{}])[0].get("delta", {}).get("content")
+                        if delta:
+                            yield delta
+                        else:
+                            # sometimes raw 'content' field
+                            c = j.get("choices", [{}])[0].get("message", {}).get("content")
+                            if c:
+                                yield c
+                    except Exception:
+                        yield line
+                return
+            return gen()
         except Exception as e:
-            raise ModelFailure(f"Google Gemini error: {str(e)}")
+            self.mark_unhealthy()
+            raise ModelFailure(f"mistral-error: {e}")
 
-class AnthropicAdapter(ModelAdapter):
-    name = "anthropic"
-    supports_stream = False
+# --------------------
+# Convenience Adapters (model name wrappers)
+# --------------------
+class TrinityOpenRouter(OpenRouterAdapter):
+    def __init__(self, key=None):
+        super().__init__("arcee-ai/trinity-large-preview:free", api_key=key)
+        self.name = "trinity-preview"
 
-    def __init__(self, api_key: Optional[str]):
-        super().__init__()
-        self.api_key = api_key
-        self.endpoint = "https://api.anthropic.com/v1/messages"
+class StepFlashOpenRouter(OpenRouterAdapter):
+    def __init__(self, key=None):
+        super().__init__("stepfun/step-3.5-flash:free", api_key=key)
+        self.name = "step-3.5-flash"
 
-    def check_ready(self):
-        return bool(self.api_key)
-
-    def generate(self, prompt, stream=False, timeout=DEFAULT_TIMEOUT):
-        if not self.check_ready():
-            raise ModelFailure("Anthropic key missing")
-        if not self._consume_slot():
-            raise ModelFailure("rate_limited")
-        payload = {"model": os.getenv("ANTHROPIC_MODEL","claude-2.1"), "prompt": prompt, "max_tokens": 1000}
-        headers = {"x-api-key": self.api_key, "Content-Type":"application/json"}
-        try:
-            r = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout)
-            r.raise_for_status()
-            j = r.json()
-            return j.get("completion") or j.get("output") or ""
-        except Exception as e:
-            raise ModelFailure(f"Anthropic error: {str(e)}")
-
-# Add more adapters (CohereAdapter, HFAdapter, WhisperAdapter, EmbeddingAdapter, etc.)
-# For embeddings+vector DB combine Cohere/HF and Pinecone/Milvus adapter layers.
-
-# -----------------------
-# Router: select adapters based on intent + health + policy
-# -----------------------
+# --------------------
+# Router / Orchestration
+# --------------------
 class ModelRouter:
     def __init__(self, adapters: List[ModelAdapter]):
         self.adapters = adapters
-        # ordering hint: prefer local/high-quality fast models first
-        # but router will reorder based on intent & health
-    def _sorted_candidates(self, intent: str) -> List[ModelAdapter]:
-        # Create prioritized list per intent
-        # You can tune the order; this is a sensible default:
-        priority = []
-        if intent == "embed":
-            # embeddings -> dedicated embedding provider (Cohere/HF), else fallback to openai embeddings
-            priority = [a for a in self.adapters if a.name in ("cohere","openai","mistral")]
-        elif intent == "multimodal":
-            priority = [a for a in self.adapters if a.name in ("google_gemini","openai","mistral")]
-        elif intent == "reason":
-            priority = [a for a in self.adapters if a.name in ("mistral","openai","anthropic","google_gemini")]
-        else:  # small chat
-            priority = [a for a in self.adapters if a.name in ("openai","mistral","anthropic")]
-        # fallback: include all others not in priority at the end
-        others = [a for a in self.adapters if a not in priority]
-        return priority + others
 
-    def ask(self, prompt: str, stream: bool=False, timeout: int=DEFAULT_TIMEOUT) -> Union[str, Generator[str,None,None]]:
+    def _candidates_for_intent(self, intent: str, complexity: str) -> List[ModelAdapter]:
+        # Prioritized lists tuned for zones
+        if intent == "embed":
+            # embeddings would use dedicated embedding adapters (phase_3 handles embeddings), fallback to OpenRouter/OpenAI
+            names = ("openai","openrouter","mistral-direct")
+            return [a for a in self.adapters if any(n in a.name for n in names)]
+        if intent == "multimodal":
+            # prefer OpenRouter trinity (if supports image) then mistral fallback
+            ordered = ["trinity-preview","mistral-direct","openrouter","step-3.5-flash"]
+            return [a for name in ordered for a in self.adapters if name in a.name]
+        # complexity priority
+        if complexity == "heavy":
+            ordered = ["mistral-direct","trinity-preview","openrouter","step-3.5-flash"]
+        elif complexity == "normal":
+            ordered = ["trinity-preview","openrouter","step-3.5-flash","mistral-direct"]
+        else:  # fast / small
+            ordered = ["step-3.5-flash","openrouter","trinity-preview","mistral-direct"]
+        # produce adapters in that order (unique)
+        out = []
+        for n in ordered:
+            for a in self.adapters:
+                if n in a.name and a not in out:
+                    out.append(a)
+        # append any other adapters not included
+        for a in self.adapters:
+            if a not in out:
+                out.append(a)
+        return out
+
+    def ask(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT) -> Union[str, Generator[str, None, None]]:
+        complexity = detect_complexity(prompt)
         intent = detect_intent(prompt)
-        candidates = self._sorted_candidates(intent)
-        errors = []
+        _emit_metric("route_selected", {"intent": intent, "complexity": complexity, "time": now_s()})
+
+        candidates = self._candidates_for_intent(intent, complexity)
+
+        last_err = None
         for adapter in candidates:
             try:
                 if not adapter.check_ready():
+                    _emit_metric("adapter_skipped_not_ready", {"adapter": adapter.name})
                     continue
-                # We try attempts with exponential backoff
-                attempt = 0
-                while attempt < MAX_ATTEMPTS:
+                # perform attempts with backoff
+                for attempt in range(1, MAX_ATTEMPTS + 1):
                     try:
-                        result = adapter.generate(prompt, stream=stream, timeout=timeout)
-                        # If adapter returns generator and stream requested, return generator
-                        return result
+                        _emit_metric("adapter_attempt", {"adapter": adapter.name, "attempt": attempt})
+                        out = adapter.generate(prompt, stream=stream, timeout=timeout)
+                        _emit_metric("adapter_success", {"adapter": adapter.name, "attempt": attempt})
+                        return out
                     except ModelFailure as mf:
-                        # soft backoff and try again (unless rate_limited)
-                        errstr = str(mf)
-                        if "rate_limited" in errstr:
-                            # wait a bit longer then move to next adapter quickly
-                            time.sleep(0.25 + attempt*0.25)
+                        last_err = mf
+                        # if rate_limited — move to next adapter quickly
+                        if "rate_limited" in str(mf).lower():
+                            _emit_metric("adapter_rate_limited", {"adapter": adapter.name})
                             break
-                        attempt += 1
-                        backoff = min(1 + attempt**2 * 0.25, 5)
+                        # transient: backoff and retry same adapter
+                        backoff = BACKOFF_BASE * (2 ** (attempt - 1))
                         time.sleep(backoff)
                         continue
             except Exception as e:
-                errors.append((adapter.name, str(e)))
-                # log and continue
+                last_err = e
+                _emit_metric("adapter_unexpected_error", {"adapter": getattr(adapter, "name", "unknown"), "err": str(e)})
                 traceback.print_exc()
+                # try next adapter
                 continue
-        # If we get here, all adapters failed — return graceful message or stream generator
-        fallback = "ZULTX is stabilizing its brain network. Try again in a few seconds."
-        if stream:
-            def gen():
-                for ch in fallback:
-                    yield ch
-                    time.sleep(0.01)
-            return gen()
-        return fallback
 
-# -----------------------
-# Bootstrap a default router with adapters
-# -----------------------
+        # if all failed, return graceful fallback (string or generator)
+        msg = "ZULTX brain temporarily unavailable. Try again in a moment."
+        _emit_metric("router_all_failed", {"err": str(last_err)})
+        if stream:
+            def g():
+                for ch in msg:
+                    yield ch
+                    time.sleep(0.003)
+            return g()
+        return msg
+
+# --------------------
+# Bootstrap default router with sensible adapters
+# --------------------
 def build_default_router() -> ModelRouter:
     adapters: List[ModelAdapter] = []
-    # register adapters with environment keys
-    adapters.append(MistralAdapter(MISTRAL_API_KEY))
-    adapters.append(OpenAIAdapter(OPENAI_API_KEY))
-    adapters.append(GoogleGeminiAdapter(GOOGLE_API_KEY))
-    adapters.append(AnthropicAdapter(ANTHROPIC_KEY))
-    # Add more: CohereAdapter(COHERE_API_KEY), HFAdapter(HF_KEY), etc.
-    # The order here is non-final — router will prioritize per intent
+    # Prioritized: local/free fast -> normal -> heavy direct
+    # Step / flash fast model (OpenRouter)
+    adapters.append(StepFlashOpenRouter(api_key=OPENROUTER_KEY))
+    # Trinity preview (OpenRouter free high-quality)
+    adapters.append(TrinityOpenRouter(api_key=OPENROUTER_KEY))
+    # Generic OpenRouter wrapper as fallback (if you want other models)
+    adapters.append(OpenRouterAdapter(model_name="openai/gpt-4o-mini", api_key=OPENROUTER_KEY))
+    # Mistral direct (heavy reasoning)
+    adapters.append(MistralAdapter(api_key=MISTRAL_KEY))
+    # Optionally add an OpenAI adapter if key exists (useful as last-resort)
+    if OPENAI_KEY:
+        class _OpenAIAdapter(ModelAdapter):
+            name = "openai"
+            supports_stream = True
+            def __init__(self, key):
+                super().__init__()
+                self.key = key
+                self.endpoint = "https://api.openai.com/v1/chat/completions"
+            def check_ready(self): return bool(self.key)
+            def generate(self, prompt, stream=False, timeout=DEFAULT_TIMEOUT):
+                if not self.check_ready(): raise ModelFailure("openai-missing")
+                if not self.bucket.consume(): raise ModelFailure("rate_limited")
+                payload = {"model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"), "messages":[{"role":"user","content":prompt}], "stream": bool(stream)}
+                headers = {"Authorization": f"Bearer {self.key}", "Content-Type":"application/json"}
+                r = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
+                r.raise_for_status()
+                if not stream:
+                    return r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                def gen():
+                    for line in r.iter_lines(decode_unicode=True):
+                        if not line: continue
+                        s = line.strip()
+                        if s.startswith("data: "): s = s[len("data: "):]
+                        if s == "[DONE]": break
+                        try:
+                            obj = json.loads(s)
+                            delta = obj.get("choices",[{}])[0].get("delta", {}).get("content")
+                            if delta: yield delta
+                        except Exception:
+                            yield s
+                return gen()
+        adapters.append(_OpenAIAdapter(OPENAI_KEY))
     return ModelRouter(adapters)
 
-# global singleton router
+# global singleton
 _router = build_default_router()
 
-# -----------------------
-# Public ask() used by rest of ZultX
-# -----------------------
-def ask(prompt: str, *, stream: bool=False, timeout: int=DEFAULT_TIMEOUT):
+# --------------------
+# Public API: ask()
+# --------------------
+def ask(prompt: str, *, stream: bool = False, timeout: int = DEFAULT_TIMEOUT) -> Union[str, Generator[str, None, None]]:
     """
-    Single entrypoint for all layers.
-    - prompt: user text
-    - stream: if True, return generator yielding text chunks
-    - timeout: seconds to wait per-adapter call
+    Main entrypoint for ZultX core.
+    - prompt: user text (string)
+    - stream: if True returns a generator that yields chunks
+    - timeout: per-adapter HTTP timeout (seconds)
     """
     return _router.ask(prompt, stream=stream, timeout=timeout)
+
+# --------------------
+# Helpers: status & health
+# --------------------
+def get_adapters_status() -> List[Dict]:
+    out = []
+    for a in _router.adapters:
+        out.append({
+            "name": getattr(a, "name", "unknown"),
+            "ready": a.check_ready(),
+            "healthy": a.health(),
+            "last_health_ts": getattr(a, "last_health", None)
+        })
+    return out
+
+def set_metrics_hook(fn: Optional[Callable[[str, Dict], None]]):
+    global metrics_hook
+    metrics_hook = fn
+
+def set_health_hook(fn: Optional[Callable[[], Dict[str, bool]]]):
+    global health_check_hook
+    health_check_hook = fn
+    
