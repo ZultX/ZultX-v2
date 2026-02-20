@@ -19,6 +19,7 @@ from fastapi import FastAPI, Query, Body, HTTPException, Request, Header
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 import urllib.parse
 
 # -------------------------
@@ -618,6 +619,79 @@ User request:
 
     return JSONResponse({"answer": text})
 
+@app.get("/ask-stream")
+async def ask_stream(
+    request: Request,
+    q: str = Query(..., alias="q"),
+    mode: str = Query("friend"),
+    temperature: Optional[float] = Query(None),
+    max_tokens: int = Query(512),
+    memory_mode: str = Query("auto")
+):
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="Missing query")
+
+    owner, session_id = extract_user_and_session(request)
+
+    # Persist user message first
+    persist_conversation(session_id, owner, "user", q, ts=datetime.utcnow())
+
+    async def event_generator():
+        full_response = ""
+
+        try:
+            if ASK_FUNC:
+                result = ASK_FUNC(
+                    user_input=q,
+                    session_id=session_id,
+                    user_id=owner,
+                    memory_mode=memory_mode,
+                    mode=mode,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=True
+                )
+
+                # If async generator
+                if hasattr(result, "__aiter__"):
+                    async for chunk in result:
+                        chunk_str = str(chunk)
+                        full_response += chunk_str
+                        yield f"data: {chunk_str}\n\n"
+
+                # If normal generator
+                elif hasattr(result, "__iter__"):
+                    for chunk in result:
+                        chunk_str = str(chunk)
+                        full_response += chunk_str
+                        yield f"data: {chunk_str}\n\n"
+
+                else:
+                    text = await normalize_result_to_text(result)
+                    full_response = text
+                    yield f"data: {text}\n\n"
+
+            else:
+                text = local_fallback_ask_plain(q)
+                full_response = text
+                yield f"data: {text}\n\n"
+
+        except Exception as e:
+            yield f"data: ZULTX error: {str(e)}\n\n"
+
+        # Persist assistant response after stream completes
+        persist_conversation(session_id, owner, "assistant", full_response, ts=datetime.utcnow())
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 @app.get("/suggestions")
 async def get_suggestions(request: Request):
