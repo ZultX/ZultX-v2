@@ -261,6 +261,19 @@ def _pg_putconn(conn):
     except Exception:
         pass
 
+def ensure_conversations_columns():
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            ALTER TABLE conversations
+            ADD COLUMN IF NOT EXISTS user_id TEXT;
+        """)
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    
 def get_db_conn():
     if PG_AVAILABLE and DB_URL:
         return _pg_getconn()
@@ -296,7 +309,8 @@ def initialize_db():
                 pass
 
 initialize_db()
-
+if PG_AVAILABLE and DB_URL:
+    ensure_conversations_columns()
 # defensive row accessor to avoid tuple/dict mismatch errors
 def _col(row: Any, name: str, idx: int):
     try:
