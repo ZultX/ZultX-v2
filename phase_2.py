@@ -35,9 +35,10 @@ def load_manifest():
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError("manifest.json missing in adapters directory")
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    
+_MANIFEST = load_manifest()
 
 def load_adapters():
-    manifest = load_manifest()
     adapters = {}
 
     for group_name in manifest["order"]:
@@ -53,7 +54,6 @@ def load_adapters():
 
 _ADAPTERS = load_adapters()
 
-
 # -----------------------------
 # PROMPT COMPOSER
 # -----------------------------
@@ -63,7 +63,6 @@ def compose_system_prompt(
     phase: str = "full",  # rag | memory | full
     extra_rules: Optional[List[str]] = None
 ) -> str:
-    manifest = load_manifest()
     blocks: List[str] = []
 
     for group in manifest["order"]:
