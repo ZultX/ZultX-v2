@@ -1063,7 +1063,7 @@ async function sendMessageFromSuggestion(text){
     const headers = { "Accept":"application/json", "X-Session-Id": sessionId };
     if(token) headers["Authorization"] = "Bearer " + token;
 
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, {
+    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}&source=suggestion`, {
       method:"GET",
       headers
     });
