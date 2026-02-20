@@ -105,7 +105,6 @@ html.dark header{
 .temp-chat-icon svg{width:20px;height:20px;display:block;}
 
 /* App layout */
-.app{display:flex;min-height:100vh;position:relative}
 .side{
   position:fixed;
   top:var(--header-h);
@@ -835,10 +834,6 @@ html.light .side .convo-item{
       <div class="center-inner">
         <div class="center-title">What can ZultX help with?</div>
         <div class="suggest-grid" id="suggestGrid">
-          <div class="suggest-card" data-q="Make a list of beautiful flowers with their meanings">🌸 List of flowers & meanings</div>
-          <div class="suggest-card" data-q="Explain black holes in simple words">🕳️ Black holes explained</div>
-          <div class="suggest-card" data-q="Give me short study motivation for exams">⚡ Motivation for exams</div>
-        </div>
         <button id="startBtn" class="start-btn">Ask Something New</button>
       </div>
     </div>
@@ -1042,7 +1037,40 @@ function createTempConversation(){
   addSystemMsg('Temporary chat started (will not be saved).');
   updateTempVisibility();
 }
+async function loadSuggestions() {
+  const grid = document.getElementById("suggestGrid");
+  grid.innerHTML = "Loading suggestions...";
 
+  try {
+    const token = localStorage.getItem("zultx_token");
+    const headers = token ? { Authorization: "Bearer " + token } : {};
+
+    const res = await fetch(`${API_BASE}/suggestions`, { headers });
+    const data = await res.json();
+
+    grid.innerHTML = "";
+
+    data.suggestions.forEach(text => {
+      const card = document.createElement("div");
+      card.className = "suggest-card";
+      card.innerText = text;
+
+      card.onclick = () => {
+        input.value = text;
+        centerScreen.style.display = 'none';
+        chatArea.style.display = 'flex';
+        currentConversationId = makeConvoId();
+        localSaveInit(currentConversationId);
+        sendMessage();
+      };
+
+      grid.appendChild(card);
+    });
+
+  } catch (err) {
+    grid.innerHTML = "Could not load suggestions.";
+  }
+}
 /* helper used by side button mapping */
 function startTemporaryChat(){
   // mobile- and desktop-consistent entrypoint for temporary chats
@@ -1387,19 +1415,6 @@ function confirmAndDelete(convoId){
   }
 }
 
-/* ---------- Suggestion cards ---------- */
-document.querySelectorAll('.suggest-card').forEach(card=>{
-  card.onclick = ()=>{
-    const q = card.dataset.q;
-    input.value = q;
-    centerScreen.style.display='none';
-    chatArea.style.display='flex';
-    currentConversationId = makeConvoId();
-    localSaveInit(currentConversationId);
-    sendMessage();
-  };
-});
-
 /* ---------- Bind send & enter behavior ---------- */
 sendBtn && sendBtn.addEventListener('click', sendMessage);
 input && input.addEventListener('keydown', function(e) {
@@ -1526,11 +1541,13 @@ function refreshAccountUI(){
 
     welcome.textContent = 'Not signed in';
     if(sideName) sideName.textContent = 'User';
+    
   }
 }
 
 refreshAccountUI();
-
+loadSuggestions();
+  
 /* ---------- small helper: click outside chat area closes side on mobile (improve UX) ---------- */
 document.addEventListener('click', (e)=> {
   // if side is open and click outside sidePanel on mobile -> close
