@@ -37,7 +37,7 @@ except Exception:
 
 # openai embeddings optional
 OPENAI_AVAIL = False
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if OPENAI_API_KEY:
     try:
         import openai
