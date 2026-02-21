@@ -621,8 +621,8 @@ User request:
 
 # Try importing phase1 multimodal
 try:
-    from phase1 import ask as phase1_ask
-    from phase1 import speak as phase1_speak
+    from phase_1 import ask as phase1_ask
+    from phase_1 import speak as phase1_speak
     print("[ZULTX] Phase1 multimodal loaded.")
 except Exception:
     phase1_ask = None
