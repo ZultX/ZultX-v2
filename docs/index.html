@@ -779,7 +779,124 @@ html.light .side .convo-item{
   background:rgba(0,0,0,0.4);
   z-index:8000;
 }
+/* PLUS BUTTON */
+.plus-btn{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.08);
+  font-size:22px;
+  cursor:pointer;
+  transition:.2s ease;
+}
+.plus-btn:hover{
+  transform:scale(1.08);
+}
 
+/* SEND BUTTON */
+.send-btn{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:.2s ease;
+}
+.send-btn svg{
+  width:18px;
+  height:18px;
+}
+.send-btn:disabled{
+  background:#444;
+  cursor:not-allowed;
+}
+
+/* BOTTOM SHEET */
+.bottom-sheet{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:60vh;
+  background:var(--bg);
+  border-top-left-radius:28px;
+  border-top-right-radius:28px;
+  box-shadow:0 -20px 60px rgba(0,0,0,0.6);
+  transform:translateY(100%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:20000;
+  padding:22px;
+  backdrop-filter:blur(14px);
+}
+.bottom-sheet.active{
+  transform:translateY(0);
+}
+
+/* GRID */
+.sheet-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin-bottom:22px;
+}
+
+.sheet-card{
+  background:rgba(255,255,255,0.06);
+  border-radius:20px;
+  padding:20px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:.2s ease;
+}
+.sheet-card:hover{
+  transform:translateY(-4px);
+  background:rgba(255,255,255,0.12);
+}
+.sheet-card svg{
+  width:28px;
+  height:28px;
+  margin-bottom:8px;
+}
+
+/* TOGGLES */
+.sheet-option{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 0;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+
+.toggle{
+  width:42px;
+  height:22px;
+  background:#444;
+  border-radius:999px;
+  position:relative;
+  cursor:pointer;
+}
+.toggle::after{
+  content:'';
+  position:absolute;
+  width:18px;
+  height:18px;
+  background:#fff;
+  border-radius:50%;
+  top:2px;
+  left:2px;
+  transition:.2s ease;
+}
+.toggle.active{
+  background:#22c55e;
+}
+.toggle.active::after{
+  left:22px;
+  }
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -1633,9 +1750,75 @@ document.addEventListener('click', (e)=> {
     }
   }
 });
+const plusBtn = document.getElementById("plusBtn");
+const bottomSheet = document.getElementById("bottomSheet");
+
+plusBtn.addEventListener("click", ()=>{
+  bottomSheet.classList.add("active");
+  showOverlay();
+});
+
+overlay.addEventListener("click", ()=>{
+  bottomSheet.classList.remove("active");
+});
+
+document.querySelectorAll(".sheet-card").forEach(card=>{
+  card.addEventListener("click", ()=>{
+    bottomSheet.classList.remove("active");
+    hideOverlay();
+    alert(card.innerText + " clicked");
+  });
+});
+
+document.querySelectorAll(".toggle").forEach(toggle=>{
+  toggle.addEventListener("click", ()=>{
+    toggle.classList.toggle("active");
+  });
+});
 
 /* ---------- bootstrap done ---------- */
 console.log('ZultX UI loaded — tidy & robust.');
 </script>
+  
+<div id="bottomSheet" class="bottom-sheet">
+  <div class="sheet-grid">
+
+    <div class="sheet-card" id="cameraBtn">
+      <svg viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="7" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/>
+        <circle cx="12" cy="14" r="4" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Camera
+    </div>
+
+    <div class="sheet-card" id="imageUploadBtn">
+      <svg viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="2"/>
+        <circle cx="8" cy="10" r="2" fill="currentColor"/>
+        <path d="M21 19l-6-6-5 5-3-3-4 4" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Image
+    </div>
+
+    <div class="sheet-card" id="fileUploadBtn">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16l4-4h10a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      File
+    </div>
+
+  </div>
+
+  <div class="sheet-option">
+    <div>Deep Thinking</div>
+    <div id="deepToggle" class="toggle"></div>
+  </div>
+
+  <div class="sheet-option">
+    <div>Image Mode</div>
+    <div id="imageModeToggle" class="toggle"></div>
+  </div>
+</div>
+  
 </body>
 </html>
