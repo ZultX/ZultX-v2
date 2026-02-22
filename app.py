@@ -737,7 +737,21 @@ async def get_suggestions(request: Request):
     suggestions = []
     import random
     entropy = random.randint(1000, 9999)
-    categories = ["science", "psychology", "technology", "future", "space", "society", "money"]
+    categories = ["science", "psychology", "technology", "future", "space", "society", "money",
+ "history", "biology", "consciousness", "AI ethics", "climate", "energy",
+ "cybersecurity", "gaming", "internet culture", "philosophy", "mythology",
+ "urban legends", "quantum physics", "neuroscience", "biohacking",
+ "productivity", "habits", "sleep", "dreams", "time", "parallel universes",
+ "dark web", "surveillance", "economics", "crypto", "startups",
+ "longevity", "genetics", "memes", "social media", "influence",
+ "propaganda", "decision-making", "behavioral economics",
+ "automation", "robotics", "transhumanism", "virtual reality",
+ "metaverse", "UFOs", "ancient civilizations", "simulation theory",
+ "attention economy", "minimalism", "luxury", "scarcity",
+ "black holes", "Mars colonization", "privacy", "identity",
+ "language", "cognition", "dopamine", "addiction",
+ "dating psychology", "friendship dynamics", "power",
+ "negotiation", "leadership", "collapse scenarios"]
     random_cat = random.choice(categories)
     if ASK_FUNC:
         prompt = f"""
