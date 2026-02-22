@@ -767,7 +767,14 @@ html.light .side{
   background:#ffffff;
   color:#111111;
 }
-
+.arrow-stem {
+  width: 2px;
+  height: 10px;
+  background-color: white;
+  display: block;
+  border-radius: 1px;
+}
+  
 html.light .side .small-muted{
   color:#555;
 }
@@ -876,7 +883,12 @@ html.light .side .convo-item{
     <div class="compose">
       <div class="compose-inner">
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
-        <button id="sendBtn"><span class="arrow-up"></span></button>
+        <button id="sendBtn">
+         <div class="send-icon-wrapper">
+           <span class="arrow-up"></span>
+           <span class="arrow-stem"></span>
+         </div>
+        </button>
       </div>
     </div>
   </main>
