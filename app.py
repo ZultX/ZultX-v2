@@ -746,8 +746,9 @@ Rules:
 - Plain text lines only.
 - Sometimes make suggestion questions with trending topics.
 - Make clean and short suggestion questions.
-- Make new suggest questions each time.
 - Only make suggestive curiose question.
+- Never make questions from memory.
+- Remake suggestion questions each time with trend.
 
 Personalize if possible using:
 User topics: {user_topics}
