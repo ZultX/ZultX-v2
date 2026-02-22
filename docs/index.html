@@ -866,8 +866,13 @@ html.light .side .convo-item{
 
     <div class="compose">
       <div class="compose-inner">
-        <textarea id="input" placeholder="Ask ZultX something positive..." rows="1"></textarea>
-        <button id="sendBtn">Send</button>
+        <button id="plusBtn" class="plus-btn">+</button>
+        <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
+        <button id="sendBtn" class="send-btn">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 4v12M12 4l-5 5M12 4l5 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </div>
   </main>
