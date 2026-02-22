@@ -781,60 +781,35 @@ html.light .side .convo-item{
   background:rgba(0,0,0,0.4);
   z-index:8000;
 }
-/* The Circular Button */
-#sendBtn {
-  width: 42px;
-  height: 42px;
-  background: #ffffff; /* Pure white like the image */
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden; /* Important for the "flying out" effect */
-  transition: all 0.2s ease;
-  padding: 0;
-}
+/* 1. Ensure the Button is White */
 
-/* Wrapper to move the whole arrow */
-.arrow-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* The Tip (Triangle) */
-.arrow-head {
-  width: 0;
-  height: 0;
+/* 2. The BLACK Triangle Head */
+.arrow-up {
+  width: 0; 
+  height: 0; 
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-bottom: 8px solid #000000; /* God-tier Black */
+  border-bottom: 9px solid #000 !important; /* FORCED BLACK */
+  display: block;
   margin-bottom: -1px;
 }
 
-/* The Stem (Line) */
+/* 3. The BLACK Stem */
 .arrow-stem {
   width: 2px;
   height: 10px;
-  background-color: #000000;
+  background-color: #000 !important; /* FORCED BLACK */
+  display: block;
   border-radius: 1px;
 }
 
-/* THE CLICK ANIMATION: Arrow flies UP and out */
-#sendBtn:active .arrow-wrapper {
-  transform: translateY(-35px);
-  opacity: 0;
-}
-
-/* Hover Effect */
-#sendBtn:hover {
-  background: #f8f8f8;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+/* 4. GOD-TIER FLY-UP ANIMATION */
+#sendBtn:active .arrow-up,
+#sendBtn:active .arrow-stem {
+  transform: translateY(-40px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  
 
   
 /* temp chats list */
