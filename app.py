@@ -751,8 +751,6 @@ Rules:
 - Remake suggestion questions each time with trend.
 
 Personalize if possible using:
-User topics: {user_topics}
-
 Trending topics: {global_topics}
 """
         try:
