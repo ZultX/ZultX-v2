@@ -923,7 +923,7 @@ html.light .side .convo-item{
       <input id="p_email" placeholder="Email (signup only)" style="display:none;" />
       <div style="position:relative; display:flex; gap:8px; align-items:center;">
         <input id="p_password" type="password" placeholder="Password" style="flex:1;" />
-        <button id="p_eye" class="pw-eye" title="Show/Hide password">👁️</button>
+        <button id="p_eye" class="pw-eye" title="Show/Hide password">👁‍🗨</button>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
         <button id="p_submit" class="menu-btn">Login</button>
@@ -1521,7 +1521,7 @@ function closePremium(){
 premiumClose && premiumClose.addEventListener('click', closePremium);
 p_toggle && p_toggle.addEventListener('click', ()=> openPremium(p_toggle.textContent.includes('Signup') ? 'signup' : 'login'));
 p_guest && p_guest.addEventListener('click', ()=> { ensureSessionId(); closePremium(); p_msg.textContent = 'Guest session active'; setTimeout(()=> p_msg.textContent = '',1500); });
-p_eye && p_eye.addEventListener('click', ()=> { if(p_password.type === 'password'){ p_password.type='text'; p_eye.textContent='🙈'; } else { p_password.type='password'; p_eye.textContent='👁️'; } });
+p_eye && p_eye.addEventListener('click', ()=> { if(p_password.type === 'password'){ p_password.type='text'; p_eye.textContent='⊘'; } else { p_password.type='password'; p_eye.textContent='👁️'; } });
 
 async function checkUsernameAvailable(un){
   try{
