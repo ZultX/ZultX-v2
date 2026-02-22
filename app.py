@@ -748,9 +748,7 @@ Avoid repeating common AI cliché topics.
 Make them surprising, max 6 words allowed.
 No numbering, no explainations, only plain text.
 Each line must start with a relevant emoji.
-
-Personalize if possible using:
-Trending topics: {global_topics}
+Use trending topics if needed.
 """
         try:
             result = ASK_FUNC(
