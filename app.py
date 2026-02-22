@@ -708,10 +708,12 @@ async def get_suggestions(request: Request):
 
         # 2️⃣ Get global trending topics
         cur.execute("""
-            SELECT content FROM conversations
+            SELECT content, COUNT(*) as freq
+            FROM conversations
             WHERE role = 'user'
-            ORDER BY ts DESC
-            LIMIT 30
+            GROUP BY content
+            ORDER BY freq DESC
+            LIMIT 10
         """)
         global_rows = cur.fetchall()
         global_topics = [r[0] for r in global_rows]
@@ -733,22 +735,16 @@ async def get_suggestions(request: Request):
 
     # 3️⃣ If phase4 AI available → generate smart suggestions
     suggestions = []
+    import random
+    entropy = random.randint(1000, 9999)
+
     if ASK_FUNC:
         prompt = f"""
-Generate exactly 3 short homepage suggestion questions for a chat AI.
-
-Rules:
-- Each line must start with a relevant emoji.
-- Maximum 6 words per suggestion question.
-- Make them exciting and very curiosity-driven.
-- No numbering.
-- No explanations.
-- Plain text lines only.
-- Sometimes make suggestion questions with trending topics.
-- Make clean and short suggestion questions.
-- Only make suggestive curiose question.
-- Never make questions from memory.
-- Remake suggestion questions each time with trend.
+Entropy key: {entropy}
+Generate 3 short and very different curiosity-driven homepage questions.
+Avoid repeating common AI cliché topics.
+Make them surprising.
+Make them too-curious.
 
 Personalize if possible using:
 Trending topics: {global_topics}
@@ -758,6 +754,7 @@ Trending topics: {global_topics}
                 user_input=prompt,
                 session_id=None,
                 user_id=None,
+                temperature=0.9,
                 stream=False
             )
             text = await normalize_result_to_text(result)
