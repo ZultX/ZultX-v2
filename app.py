@@ -737,14 +737,18 @@ async def get_suggestions(request: Request):
     suggestions = []
     import random
     entropy = random.randint(1000, 9999)
-
+    categories = ["science", "psychology", "technology", "future", "space", "society"]
+    random_cat = random.choice(categories)
     if ASK_FUNC:
         prompt = f"""
 Entropy key: {entropy}
+Focus theme: {random_cat}
 Generate 3 short and very different curiosity-driven homepage questions.
 Avoid repeating common AI cliché topics.
 Make them surprising.
 Make them too-curious.
+No numbering, no explainations, only plain text.
+Start suggestive questions with tone-friendly emojis.
 
 Personalize if possible using:
 Trending topics: {global_topics}
