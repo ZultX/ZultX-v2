@@ -795,7 +795,62 @@ html.light .side .convo-item{
   background:rgba(0,0,0,0.4);
   z-index:8000;
 }
+/* The Circular Button */
+#sendBtn {
+  width: 42px;
+  height: 42px;
+  background: #ffffff; /* Pure white like the image */
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden; /* Important for the "flying out" effect */
+  transition: all 0.2s ease;
+  padding: 0;
+}
 
+/* Wrapper to move the whole arrow */
+.arrow-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The Tip (Triangle) */
+.arrow-head {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 8px solid #000000; /* God-tier Black */
+  margin-bottom: -1px;
+}
+
+/* The Stem (Line) */
+.arrow-stem {
+  width: 2px;
+  height: 10px;
+  background-color: #000000;
+  border-radius: 1px;
+}
+
+/* THE CLICK ANIMATION: Arrow flies UP and out */
+#sendBtn:active .arrow-wrapper {
+  transform: translateY(-35px);
+  opacity: 0;
+}
+
+/* Hover Effect */
+#sendBtn:hover {
+  background: #f8f8f8;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -883,12 +938,7 @@ html.light .side .convo-item{
     <div class="compose">
       <div class="compose-inner">
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
-        <button id="sendBtn">
-         <div class="send-icon-wrapper">
-           <span class="arrow-up"></span>
-           <span class="arrow-stem"></span>
-         </div>
-        </button>
+        <button id="sendBtn"><span class="arrow-up"></span></button>
       </div>
     </div>
   </main>
