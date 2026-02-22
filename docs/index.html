@@ -667,6 +667,15 @@ html.light .ai-pulse{
     left:0;
   }
 }
+.arrow-up {
+  width: 0; 
+  height: 0; 
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid white; /* This creates the triangle */
+  display: inline-block;
+}
+  
 @media (max-width:768px){
 
   header{
@@ -867,7 +876,7 @@ html.light .side .convo-item{
     <div class="compose">
       <div class="compose-inner">
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
-        <button id="sendBtn">⯅</button>
+        <button id="sendBtn"><span class="arrow-up"></span></button>
       </div>
     </div>
   </main>
