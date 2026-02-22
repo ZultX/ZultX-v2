@@ -214,25 +214,77 @@ html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(
 
 /* compose area */
 .compose{
-  position:sticky;
+  position:fixed;
   bottom:0;
-  padding:14px;
+  left:0;
+  right:0;
+  padding:14px 16px 22px;
   background:var(--bg);
-  display:flex;
-  justify-content:center;
-  z-index:50;
+  backdrop-filter:blur(12px);
+  border-top:1px solid rgba(255,255,255,0.06);
 }
-
 .compose-inner{
   display:flex;
   align-items:center;
-  gap:8px;
-  width:100%;
-  max-width:820px;
-  background:rgba(255,255,255,0.06);
-  border-radius:999px;
-  padding:6px 10px;
-  backdrop-filter:blur(10px);
+  gap:10px;
+  background:rgba(255,255,255,0.05);
+  padding:10px;
+  border-radius:28px;
+  transition:.2s ease;
+}
+
+.compose-inner:focus-within{
+  background:rgba(255,255,255,0.08);
+}
+
+textarea{
+  flex:1;
+  resize:none;
+  border:none;
+  outline:none;
+  background:transparent;
+  color:var(--text);
+  font-size:15px;
+  max-height:140px;
+}
+
+.plus-btn{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.08);
+  font-size:20px;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.plus-btn:hover{
+  background:rgba(255,255,255,0.16);
+  transform:scale(1.05);
+}
+
+.send-btn{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:none;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.send-btn svg{
+  width:16px;
+  height:16px;
+}
+
+.send-btn:disabled{
+  background:#444;
+  cursor:not-allowed;
 }
 
 .compose textarea{
@@ -537,7 +589,13 @@ body{
   background:rgba(255,255,255,0.15);
   transform:translateY(-2px);
 }
-
+  
+.image-wait{
+  font-size:12px;
+  margin-top:8px;
+  color:#888;
+}
+  
 .msg.ai.thinking{
   display:flex;
   align-items:center;
@@ -779,20 +837,7 @@ html.light .side .convo-item{
   background:rgba(0,0,0,0.4);
   z-index:8000;
 }
-/* PLUS BUTTON */
-.plus-btn{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  border:none;
-  background:rgba(255,255,255,0.08);
-  font-size:22px;
-  cursor:pointer;
-  transition:.2s ease;
-}
-.plus-btn:hover{
-  transform:scale(1.08);
-}
+
 
 /* SEND BUTTON */
 .send-btn{
@@ -807,14 +852,6 @@ html.light .side .convo-item{
   cursor:pointer;
   transition:.2s ease;
 }
-.send-btn svg{
-  width:18px;
-  height:18px;
-}
-.send-btn:disabled{
-  background:#444;
-  cursor:not-allowed;
-}
 
 /* BOTTOM SHEET */
 .bottom-sheet{
@@ -822,17 +859,17 @@ html.light .side .convo-item{
   left:0;
   right:0;
   bottom:0;
-  height:60vh;
+  height:55vh;
   background:var(--bg);
-  border-top-left-radius:28px;
-  border-top-right-radius:28px;
-  box-shadow:0 -20px 60px rgba(0,0,0,0.6);
-  transform:translateY(100%);
-  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  border-top-left-radius:30px;
+  border-top-right-radius:30px;
+  box-shadow:0 -30px 80px rgba(0,0,0,0.7);
+  transform:translateY(110%);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
   z-index:20000;
   padding:22px;
-  backdrop-filter:blur(14px);
 }
+
 .bottom-sheet.active{
   transform:translateY(0);
 }
@@ -984,10 +1021,20 @@ html.light .side .convo-item{
     <div class="compose">
       <div class="compose-inner">
         <button id="plusBtn" class="plus-btn">+</button>
-        <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
+
+        <textarea 
+          id="input" 
+          placeholder="Ask ZultX..." 
+          rows="1">
+        </textarea>
+
         <button id="sendBtn" class="send-btn">
           <svg viewBox="0 0 24 24">
-            <path d="M12 4v12M12 4l-5 5M12 4l5 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 5v10M12 5l-4 4M12 5l4 4"
+                  stroke="white"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
@@ -1108,7 +1155,8 @@ const p_msg = document.getElementById("p_msg");
 
 let currentConversationId = null;
 let tempMode = false;
-
+let premiumMode = 'login';
+  
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
 function showOverlay(){ overlay.style.display = 'block'; overlay.setAttribute('aria-hidden','false'); }
@@ -1219,7 +1267,28 @@ async function sendMessageFromSuggestion(text){
   }
 }
 
+function showImageProgress(){
+  const msg = document.createElement("div");
+  msg.className = "msg ai";
 
+  msg.innerHTML = `
+    <div class="bubble">
+      <div id="imageProgressText">
+        Generating image...
+      </div>
+      <div class="image-wait">
+        Image is in progress. It may take 90–120 seconds.
+        You can continue chatting meanwhile.
+      </div>
+    </div>
+  `;
+
+  chatArea.appendChild(msg);
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  return msg;
+}
+  
 /* start a fresh temporary chat (not saved) */
 function createTempConversation(){
   tempMode = true;
@@ -1538,7 +1607,14 @@ async function sendMessage(){
   addUserMsg(text);
   input.value = '';
   sendBtn.disabled = true;
+  const isImageMode = document.getElementById("imageModeToggle")?.classList.contains("active");
+  const isDeepMode = document.getElementById("deepToggle")?.classList.contains("active");
 
+  let modeType = "normal";
+  if(isImageMode) modeType = "image";
+  if(isDeepMode) modeType = "deep";
+
+  console.log("Mode:", modeType);
   let aiDiv = document.createElement('div'); aiDiv.className = 'msg ai thinking'; aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
   chatArea.appendChild(aiDiv);
   try{
