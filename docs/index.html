@@ -1437,36 +1437,86 @@ function localSaveInit(convoId){
 }
 
 /* ---------- Send message flow ---------- */
-async function sendMessage(){
+let socket = null;
+
+function getWSUrl() {
+  const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+  return protocol + new URL(API_BASE).host + "/ws/ask";
+}
+
+function connectSocket() {
+  if (socket && socket.readyState === WebSocket.OPEN) return;
+
+  socket = new WebSocket(getWSUrl());
+
+  socket.onclose = () => {
+    socket = null;
+  };
+
+  socket.onerror = (err) => {
+    console.error("WS error:", err);
+  };
+}
+
+async function sendMessage() {
   const text = input.value.trim();
-  if(!text) return;
-  centerScreen.style.display = 'none'; chatArea.style.display = 'flex';
-  if(!currentConversationId){
+  if (!text) return;
+
+  centerScreen.style.display = 'none';
+  chatArea.style.display = 'flex';
+
+  if (!currentConversationId) {
     currentConversationId = makeConvoId();
     localSaveInit(currentConversationId);
   }
+
   addUserMsg(text);
   input.value = '';
   sendBtn.disabled = true;
 
-  let aiDiv = document.createElement('div'); aiDiv.className = 'msg ai thinking'; aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
+  // thinking bubble
+  let aiDiv = document.createElement('div');
+  aiDiv.className = 'msg ai thinking';
+  aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
   chatArea.appendChild(aiDiv);
-  try{
-    const token = getToken();
-    const sessionId = ensureSessionId();
-    const headers = { "Accept":"application/json", "X-Session-Id": sessionId };
-    if(token) headers["Authorization"] = "Bearer " + token;
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, { method:"GET", headers });
-    if(!res.ok) throw new Error('Server error');
-    const data = await res.json();
-    const answer = data?.answer || "No response.";
-    aiDiv.classList.remove("thinking");
-    fakeStream(aiDiv, answer, 0);
-    saveMessageToHistory(currentConversationId, 'ai', answer);
-  }catch(err){
-    console.error(err);
-    aiDiv.textContent = "⚠️ Connection error.";
-  }finally{ sendBtn.disabled = false; updateTempVisibility(); }
+
+  connectSocket();
+
+  socket.onopen = () => {
+    socket.send(JSON.stringify({
+      q: text,
+      session_id: ensureSessionId(),
+      owner: getToken() ? localStorage.getItem('zultx_username') : "guest",
+      mode: "friend"
+    }));
+  };
+
+  let fullResponse = "";
+
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "chunk") {
+      if (aiDiv.classList.contains("thinking")) {
+        aiDiv.classList.remove("thinking");
+        aiDiv.textContent = "";
+      }
+
+      fullResponse += data.content;
+      aiDiv.textContent += data.content;
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    if (data.type === "done") {
+      aiDiv.innerHTML = marked.parse(fullResponse);
+      aiDiv.querySelectorAll("pre code").forEach(block => hljs.highlightElement(block));
+      enhanceCodeBlocks(aiDiv);
+
+      saveMessageToHistory(currentConversationId, 'ai', fullResponse);
+      sendBtn.disabled = false;
+      updateTempVisibility();
+    }
+  };
 }
 
 /* ---------- Open / New conversation ---------- */
