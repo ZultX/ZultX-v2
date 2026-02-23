@@ -1481,16 +1481,20 @@ async function sendMessage() {
   chatArea.appendChild(aiDiv);
 
   connectSocket();
+  
+  const payload = JSON.stringify({
+    q: text,
+    session_id: ensureSessionId(),
+    owner: getToken() ? localStorage.getItem('zultx_username') : "guest",
+    mode: "friend"
+  });
 
-  socket.onopen = () => {
-    socket.send(JSON.stringify({
-      q: text,
-      session_id: ensureSessionId(),
-      owner: getToken() ? localStorage.getItem('zultx_username') : "guest",
-      mode: "friend"
-    }));
-  };
-
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(payload);
+  } else {
+    socket.onopen = () => socket.send(payload);
+  }
+  
   let fullResponse = "";
 
   socket.onmessage = (event) => {
