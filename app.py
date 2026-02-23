@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 import urllib.parse
+from fastapi import WebSocket, WebSocketDisconnect
 
 # -------------------------
 # Required: psycopg2 (no fallback)
@@ -649,6 +650,77 @@ async def generate_image(payload: dict = Body(...)):
     except Exception as e:
         traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# -------------------------
+# WebSocket streaming ask
+# -------------------------
+@app.websocket("/ws/ask")
+async def websocket_ask(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+
+            q = data.get("q")
+            mode = data.get("mode", "friend")
+            temperature = data.get("temperature")
+            max_tokens = data.get("max_tokens", 512)
+            memory_mode = data.get("memory_mode", "auto")
+            session_id = data.get("session_id")
+            owner = data.get("owner")
+
+            if not q:
+                await websocket.send_json({"error": "Missing query"})
+                continue
+
+            # Save user message
+            persist_conversation(session_id, owner, "user", q)
+
+            kwargs = {
+                "user_input": q,
+                "session_id": session_id,
+                "user_id": owner,
+                "memory_mode": memory_mode,
+                "mode": mode,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True
+            }
+
+            if ASK_FUNC:
+                result = ASK_FUNC(**kwargs)
+
+                # If async stream
+                if hasattr(result, "__aiter__"):
+                    async for chunk in result:
+                        await websocket.send_json({
+                            "type": "chunk",
+                            "content": str(chunk)
+                        })
+                else:
+                    # Sync generator
+                    for chunk in result:
+                        await websocket.send_json({
+                            "type": "chunk",
+                            "content": str(chunk)
+                        })
+            else:
+                fallback = local_fallback_ask_plain(q)
+                await websocket.send_json({
+                    "type": "chunk",
+                    "content": fallback
+                })
+
+            await websocket.send_json({"type": "done"})
+
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        traceback.print_exc()
+        await websocket.send_json({"error": str(e)})
+
 
 from fastapi import UploadFile, File
 
