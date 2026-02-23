@@ -26,9 +26,9 @@ OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
 MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
 OPENAI_KEY = os.getenv("OPENAI_KEY")  # optional fallback for some use-cases
 
-DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "30"))
-MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "3"))
-BACKOFF_BASE = float(os.getenv("PHASE1_BACKOFF_BASE", "0.35"))
+DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "12"))
+MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "2"))
+BACKOFF_BASE = float(os.getenv("PHASE1_BACKOFF_BASE", "0"))
 RATE_PER_SEC = float(os.getenv("PHASE1_RATE_PER_SEC", "1.0"))
 RATE_CAPACITY = float(os.getenv("PHASE1_RATE_CAPACITY", "5.0"))
 
