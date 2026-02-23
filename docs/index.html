@@ -1436,8 +1436,75 @@ function localSaveInit(convoId){
   setAllHistory(all);
 }
 
-/* ---------- Send message flow ---------- */
+/* ---------- Send message flow (combined, robust) ---------- */
 let socket = null;
+let socketMessageHandler = null;
+
+/**
+ * Central message handler function (created per-socket so it can be removed on reconnect)
+ * Expects JSON frames: { type: "chunk" | "done", content: "..." }
+ */
+function makeSocketMessageHandler() {
+  return function (event) {
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (err) {
+      console.warn("WS: invalid JSON frame", err, event.data);
+      return;
+    }
+
+    // if no active response container, ignore streaming chunks
+    if (!window.__currentAiDiv) return;
+
+    try {
+      if (data.type === "chunk") {
+        const aiDiv = window.__currentAiDiv;
+
+        if (aiDiv.classList.contains("thinking")) {
+          aiDiv.classList.remove("thinking");
+          aiDiv.textContent = "";
+        }
+
+        // accumulate into a global (per-page) buffer so code runs consistently
+        window.__fullResponse = (window.__fullResponse || "") + (data.content || "");
+        // append raw chunk for immediate UX; final markdown rendering happens on "done"
+        aiDiv.textContent += data.content || "";
+        chatArea.scrollTop = chatArea.scrollHeight;
+      } else if (data.type === "done") {
+        const aiDiv = window.__currentAiDiv;
+        const finalText = window.__fullResponse || "";
+
+        // render markdown + highlight code blocks
+        aiDiv.innerHTML = marked.parse(finalText);
+        aiDiv.querySelectorAll("pre code").forEach(block => hljs.highlightElement(block));
+        enhanceCodeBlocks(aiDiv);
+
+        // persist & UI state
+        try { saveMessageToHistory(currentConversationId, 'ai', finalText); } catch (e) { console.warn("saveHistory failed", e); }
+        sendBtn.disabled = false;
+        updateTempVisibility();
+
+        // clear current references (safe cleanup)
+        window.__currentAiDiv = null;
+        window.__fullResponse = "";
+      }
+    } catch (err) {
+      console.error("WS handler error", err);
+    }
+  };
+}
+
+function setupSocketListeners() {
+  if (!socket) return;
+  // remove previous handler if present to avoid duplicates
+  if (socketMessageHandler) {
+    try { socket.removeEventListener("message", socketMessageHandler); } catch (e) { /* ignore */ }
+    socketMessageHandler = null;
+  }
+  socketMessageHandler = makeSocketMessageHandler();
+  socket.addEventListener("message", socketMessageHandler);
+}
 
 function getWSUrl() {
   const protocol = location.protocol === "https:" ? "wss://" : "ws://";
@@ -1445,9 +1512,34 @@ function getWSUrl() {
 }
 
 function connectSocket() {
-  if (socket && socket.readyState === WebSocket.OPEN) return;
+  // If socket already open, nothing to do
+  if (socket && socket.readyState === WebSocket.OPEN) return Promise.resolve(socket);
 
-  socket = new WebSocket(getWSUrl());
+  // If socket is in connecting state, return a promise that resolves when open
+  if (socket && socket.readyState === WebSocket.CONNECTING) {
+    return new Promise((resolve, reject) => {
+      const onopen = () => {
+        socket.removeEventListener("open", onopen);
+        setupSocketListeners();
+        resolve(socket);
+      };
+      const onerr = (e) => {
+        socket.removeEventListener("error", onerr);
+        reject(e);
+      };
+      socket.addEventListener("open", onopen);
+      socket.addEventListener("error", onerr);
+    });
+  }
+
+  // create a fresh socket
+  try {
+    socket = new WebSocket(getWSUrl());
+  } catch (err) {
+    console.warn("WS create failed", err);
+    socket = null;
+    return Promise.reject(err);
+  }
 
   socket.onclose = () => {
     socket = null;
@@ -1456,8 +1548,34 @@ function connectSocket() {
   socket.onerror = (err) => {
     console.error("WS error:", err);
   };
+
+  // once opened, attach listeners
+  return new Promise((resolve, reject) => {
+    const onopen = () => {
+      try {
+        setupSocketListeners();
+      } catch (e) {
+        console.warn("setupSocketListeners failed", e);
+      }
+      socket.removeEventListener("open", onopen);
+      socket.removeEventListener("error", onerr);
+      resolve(socket);
+    };
+    const onerr = (e) => {
+      socket.removeEventListener("open", onopen);
+      socket.removeEventListener("error", onerr);
+      // leave socket for onclose cleanup
+      reject(e);
+    };
+    socket.addEventListener("open", onopen);
+    socket.addEventListener("error", onerr);
+  });
 }
 
+/**
+ * sendMessage: try streaming over WebSocket first.
+ * If WebSocket can't open quickly, fall back to fetch-based single response + fakeStream.
+ */
 async function sendMessage() {
   const text = input.value.trim();
   if (!text) return;
@@ -1474,53 +1592,105 @@ async function sendMessage() {
   input.value = '';
   sendBtn.disabled = true;
 
-  // thinking bubble
-  let aiDiv = document.createElement('div');
+  // thinking bubble (placeholder while streaming / fetching)
+  const aiDiv = document.createElement('div');
   aiDiv.className = 'msg ai thinking';
   aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
   chatArea.appendChild(aiDiv);
 
-  connectSocket();
-  
-  const payload = JSON.stringify({
+  // prepare streaming state (per-page global used by handler)
+  window.__currentAiDiv = aiDiv;
+  window.__fullResponse = "";
+
+  // prepare payload
+  const payloadObj = {
     q: text,
     session_id: ensureSessionId(),
     owner: getToken() ? localStorage.getItem('zultx_username') : "guest",
     mode: "friend"
-  });
+  };
+  const payload = JSON.stringify(payloadObj);
 
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.send(payload);
-  } else {
-    socket.onopen = () => socket.send(payload);
+  // Attempt to connect socket, but with a short timeout. If no open, fallback to fetch.
+  let socketOpened = false;
+  try {
+    const connectPromise = connectSocket();
+    // Wait for up to 2000ms for socket to open; if slow, fallback to fetch
+    socketOpened = await promiseTimeout(connectPromise, 2000);
+  } catch (err) {
+    socketOpened = false;
   }
-  
-  let fullResponse = "";
 
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === "chunk") {
-      if (aiDiv.classList.contains("thinking")) {
-        aiDiv.classList.remove("thinking");
-        aiDiv.textContent = "";
-      }
-
-      fullResponse += data.content;
-      aiDiv.textContent += data.content;
-      chatArea.scrollTop = chatArea.scrollHeight;
+  if (socketOpened && socket && socket.readyState === WebSocket.OPEN) {
+    try {
+      // send payload over socket
+      socket.send(payload);
+      // streaming will be handled by the socketMessageHandler defined earlier
+      // do not finalize here — handler will finalize on "done" frame
+      return;
+    } catch (err) {
+      console.warn("WS send failed, falling back to fetch", err);
     }
+  }
 
-    if (data.type === "done") {
-      aiDiv.innerHTML = marked.parse(fullResponse);
-      aiDiv.querySelectorAll("pre code").forEach(block => hljs.highlightElement(block));
-      enhanceCodeBlocks(aiDiv);
+  // ---- Fallback: fetch the full response, then fakeStream it ----
+  try {
+    const token = getToken();
+    const sessionId = ensureSessionId();
+    const headers = { "Accept": "application/json", "X-Session-Id": sessionId };
+    if (token) headers["Authorization"] = "Bearer " + token;
 
-      saveMessageToHistory(currentConversationId, 'ai', fullResponse);
+    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, { method: "GET", headers });
+    if (!res.ok) throw new Error('Server error: ' + res.status);
+    const data = await res.json();
+    const answer = data?.answer || "No response.";
+
+    // remove thinking state and fake-stream full answer (zero delay will render instantly then highlight)
+    aiDiv.classList.remove("thinking");
+    fakeStream(aiDiv, answer, 0);
+
+    // save to history after fakeStream finishes (fakeStream will convert markup; we save final text)
+    // fakeStream is synchronous in its finalization when speed=0, but to be safe, use a small timeout
+    setTimeout(() => {
+      try { saveMessageToHistory(currentConversationId, 'ai', answer); } catch (e) { console.warn("saveHistory failed", e); }
       sendBtn.disabled = false;
       updateTempVisibility();
-    }
-  };
+      // cleanup globals
+      window.__currentAiDiv = null;
+      window.__fullResponse = "";
+    }, 50);
+
+  } catch (err) {
+    console.error("Fetch fallback failed", err);
+    aiDiv.classList.remove("thinking");
+    aiDiv.textContent = "⚠️ Connection error.";
+    sendBtn.disabled = false;
+    updateTempVisibility();
+    window.__currentAiDiv = null;
+    window.__fullResponse = "";
+  }
+}
+
+/* ---------- small helper: promise with timeout ---------- */
+function promiseTimeout(promise, ms) {
+  // resolve promise or timeout (returns promise result on success, throws on timeout)
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    promise.then((res) => {
+      if (settled) return;
+      settled = true;
+      resolve(res);
+    }).catch((err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("timeout"));
+    }, ms);
+  });
 }
 
 /* ---------- Open / New conversation ---------- */
