@@ -14,7 +14,6 @@ import hashlib
 import traceback
 from typing import Any, Optional, Tuple
 from datetime import datetime
-from pathlib import Path
 
 from fastapi import FastAPI, Query, Body, HTTPException, Request, Header
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
@@ -27,15 +26,6 @@ from fastapi import WebSocket, WebSocketDisconnect
 # -------------------------
 # Required: psycopg2 (no fallback)
 # -------------------------
-from phase_2 import load_manifest, load_adapters
-
-ADAPTER_DIR = Path("prompt/adapters")
-MANIFEST_PATH = ADAPTER_DIR / "manifest.json"
-manifest = load_manifest()
-print("MANIFEST LOADED:", manifest)
-_ADAPTERS = load_adapters()
-print("ADAPTER_DIR:", ADAPTER_DIR.resolve())
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is required (no fallback). Set DATABASE_URL to your Postgres/Supabase URL.")
