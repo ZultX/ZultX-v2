@@ -222,7 +222,7 @@ class MistralAdapter(ModelAdapter):
 
     def __init__(self, api_key: Optional[str] = None):
         super().__init__()
-        self.key = MISTRAL_API_KEY or MISTRAL_KEY
+        self.key = api_key or MISTRAL_KEY
         self.endpoint = "https://api.mistral.ai/v1/chat/completions"
 
     def check_ready(self):
