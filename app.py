@@ -26,10 +26,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 # -------------------------
 # Required: psycopg2 (no fallback)
 # -------------------------
-from phase_2 import ask
 
-res = ask("Hello world", stream=True)
-print(type(res))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -656,7 +653,17 @@ async def generate_image(payload: dict = Body(...)):
         traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
 
+def clean_stream_chunk(chunk: str) -> str:
+    if not chunk:
+        return ""
+    chunk = chunk.strip()
 
+    # filter debug noise
+    if chunk.startswith("OPENROUTER"):
+        return ""
+
+    return chunk
+    
 # -------------------------
 # WebSocket streaming ask
 # -------------------------
@@ -705,7 +712,9 @@ async def websocket_ask(websocket: WebSocket):
                 # 🔥 Async generator
                 if hasattr(result, "__aiter__"):
                     async for chunk in result:
-                        chunk = str(chunk)
+                        chunk = clean_stream_chunk(str(chunk))
+                        if not chunk:
+                           continue
                         full_response += chunk
                         await websocket.send_json({
                             "type": "chunk",
@@ -715,6 +724,9 @@ async def websocket_ask(websocket: WebSocket):
                 # 🔥 Sync generator
                 elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes, dict)):
                     for chunk in result:
+                        chunk = clean_stream_chunk(str(chunmk))
+                        if not chunk:
+                            continue
                         chunk = str(chunk)
                         full_response += chunk
                         await websocket.send_json({
