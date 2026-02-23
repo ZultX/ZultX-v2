@@ -761,7 +761,7 @@ Entropy key: {entropy}
 Focus theme: {random_cat}
 Generate 3 short and very different curiosity-driven homepage questions.
 Avoid repeating common AI cliché topics.
-Make them surprising, max 6 words allowed.
+Make them surprising, max 5 words allowed.
 No numbering, no explainations, only plain text.
 Each line must start with a relevant emoji.
 Use trending topics if needed.
