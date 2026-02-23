@@ -70,14 +70,14 @@ def now_s():
 # --------------------
 def detect_intent(prompt: str) -> str:
     txt = (prompt or "").strip().lower()
-    if not txt:
+    if not txt or len(txt) > 3:
         return "small"
     if any(w in txt for w in ["embed", "embedding", "vectorize", "vector", "vect"]):
         return "embed"
     if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision", ".png"]):
         return "multimodal"
     # heavy keywords
-    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis", "why", "prove", "explain", "can", "why", "how", "will"]
+    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis", "why", "does", "prove", "explain", "can", "why", "how", "will"]
     score = 0
     for t in heavy:
         if t in txt:
@@ -233,7 +233,6 @@ class MistralAdapter(ModelAdapter):
             raise ModelFailure("mistral-key-missing")
         if not self.bucket.consume():
             raise ModelFailure("rate_limited")
-
         payload = {"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "stream": bool(stream)}
         headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
         try:
@@ -302,7 +301,7 @@ class ModelRouter:
         if complexity == "heavy":
             ordered = ["mistral-direct","trinity-preview","openrouter","step-3.5-flash"]
         elif complexity == "normal":
-            ordered = ["trinity-preview","openrouter","step-3.5-flash","mistral-direct"]
+            ordered = ["mistral-direct", "trinity-preview","openrouter","step-3.5-flash"]
         else:  # fast / small
             ordered = ["step-3.5-flash","openrouter","trinity-preview","mistral-direct"]
         # produce adapters in that order (unique)
