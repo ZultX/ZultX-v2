@@ -1197,8 +1197,19 @@ def phase4_ask(user_input: str,
 
     # Call reasoning core (phase3)
     try:
-        phase3_result = phase3_ask(final_prompt, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
+        phase3_result = phase3_ask(
+          final_prompt,
+          persona=persona,
+          mode=mode,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stream=stream,
+          timeout=timeout
+        )
         fallback = False
+        # 🔥 If streaming → forward generator directly
+        if stream and hasattr(phase3_result, "__iter__"):
+         return phase3_result
     except Exception as e:
         try:
             phase3_result = phase3_ask(user_input, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
