@@ -1207,9 +1207,13 @@ def phase4_ask(user_input: str,
           timeout=timeout
         )
         fallback = False
-        # 🔥 If streaming → forward generator directly
-        if stream and hasattr(phase3_result, "__iter__"):
-         return phase3_result
+        import types
+        import asyncio
+        if stream:
+            if isinstance(phase3_result, types.GeneratorType):
+              return phase3_result
+            if hasattr(phase3_result, "__aiter__"):
+              return phase3_result
     except Exception as e:
         try:
             phase3_result = phase3_ask(user_input, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
