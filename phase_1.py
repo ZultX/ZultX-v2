@@ -24,7 +24,7 @@ import requests
 # --------------------
 OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
 MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")  # optional fallback for some use-cases
+OPENAI_KEY = os.getenv("OPENAI_KEY")  # optional fallback for some use-cases
 
 DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "30"))
 MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "3"))
