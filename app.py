@@ -26,6 +26,11 @@ from fastapi import WebSocket, WebSocketDisconnect
 # -------------------------
 # Required: psycopg2 (no fallback)
 # -------------------------
+from phase_2 import ask
+
+res = ask("Hello world", stream=True)
+print(type(res))
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is required (no fallback). Set DATABASE_URL to your Postgres/Supabase URL.")
