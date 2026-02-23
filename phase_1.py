@@ -72,19 +72,19 @@ def detect_intent(prompt: str) -> str:
     txt = (prompt or "").strip().lower()
     if not txt:
         return "small"
-    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector"]):
+    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector", "vect"]):
         return "embed"
-    if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision"]):
+    if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision", ".png"]):
         return "multimodal"
     # heavy keywords
-    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis"]
+    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis", "why", "prove", "explain", "can", "why", "how", "will"]
     score = 0
     for t in heavy:
         if t in txt:
             score += 1
     if len(txt) > 800 or score >= 1:
         return "reason"
-    if len(txt) > 250:
+    if len(txt) > 200:
         return "long"
     return "small"
 
@@ -222,7 +222,7 @@ class MistralAdapter(ModelAdapter):
 
     def __init__(self, api_key: Optional[str] = None):
         super().__init__()
-        self.key = api_key or MISTRAL_KEY
+        self.key = MISTRAL_API_KEY or MISTRAL_KEY
         self.endpoint = "https://api.mistral.ai/v1/chat/completions"
 
     def check_ready(self):
