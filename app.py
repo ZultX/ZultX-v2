@@ -26,7 +26,11 @@ from fastapi import WebSocket, WebSocketDisconnect
 # -------------------------
 # Required: psycopg2 (no fallback)
 # -------------------------
-
+from phase_2 import load_manifest, load_adapters
+manifest = load_manifest()
+print("MANIFEST LOADED:", manifest)
+_ADAPTERS = load_adapters()
+print("ADAPTER_DIR:", ADAPTER_DIR.resolve())
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
