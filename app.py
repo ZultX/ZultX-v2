@@ -675,7 +675,6 @@ async def websocket_ask(websocket: WebSocket):
                 await websocket.send_json({"error": "Missing query"})
                 continue
 
-            # Save user message
             persist_conversation(session_id, owner, "user", q)
 
             kwargs = {
@@ -689,29 +688,52 @@ async def websocket_ask(websocket: WebSocket):
                 "stream": True
             }
 
+            full_response = ""
+
             if ASK_FUNC:
                 result = ASK_FUNC(**kwargs)
 
-                # If async stream
+                # 🔥 Handle coroutine
+                if asyncio.iscoroutine(result):
+                    result = await result
+
+                # 🔥 Async generator
                 if hasattr(result, "__aiter__"):
                     async for chunk in result:
+                        chunk = str(chunk)
+                        full_response += chunk
                         await websocket.send_json({
                             "type": "chunk",
-                            "content": str(chunk)
+                            "content": chunk
                         })
-                else:
-                    # Sync generator
+
+                # 🔥 Sync generator
+                elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes, dict)):
                     for chunk in result:
+                        chunk = str(chunk)
+                        full_response += chunk
                         await websocket.send_json({
                             "type": "chunk",
-                            "content": str(chunk)
+                            "content": chunk
                         })
+
+                # 🔥 Fallback: full string
+                else:
+                    full_response = str(result)
+                    await websocket.send_json({
+                        "type": "chunk",
+                        "content": full_response
+                    })
+
             else:
-                fallback = local_fallback_ask_plain(q)
+                full_response = local_fallback_ask_plain(q)
                 await websocket.send_json({
                     "type": "chunk",
-                    "content": fallback
+                    "content": full_response
                 })
+
+            # persist assistant response AFTER stream
+            persist_conversation(session_id, owner, "assistant", full_response)
 
             await websocket.send_json({"type": "done"})
 
@@ -719,8 +741,10 @@ async def websocket_ask(websocket: WebSocket):
         print("Client disconnected")
     except Exception as e:
         traceback.print_exc()
-        await websocket.send_json({"error": str(e)})
-
+        try:
+            await websocket.send_json({"error": str(e)})
+        except:
+            pass
 
 from fastapi import UploadFile, File
 
