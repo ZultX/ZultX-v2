@@ -742,8 +742,8 @@ async def websocket_ask(websocket: WebSocket):
 
             await websocket.send_json({"type": "done"})
 
-    except WebSocketDisconnect:
-        print("Client disconnected")
+    except WebSocketDisconnect as e:
+        print("Client disconnected", e)
     except Exception as e:
         traceback.print_exc()
         try:
