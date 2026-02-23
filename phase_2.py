@@ -53,37 +53,36 @@ def load_adapters():
 
 
 _ADAPTERS = load_adapters()
+_PREBUILT_PROMPTS = {}
 
-# -----------------------------
-# PROMPT COMPOSER
-# -----------------------------
-def compose_system_prompt(
-    *,
-    persona: Optional[str] = None,
-    phase: str = "full",  # rag | memory | full
-    extra_rules: Optional[List[str]] = None
-) -> str:
-    blocks: List[str] = []
-
+def _build_phase_prompt(phase: str):
+    blocks = []
     for group in manifest["order"]:
-        # phase gating
         if phase == "rag" and group == "memory":
             continue
         if phase == "memory" and group == "truth":
             continue
-
         for fname in manifest["groups"][group]:
-            text = _ADAPTERS[fname]
+            blocks.append(_ADAPTERS[fname])
+    return "\n\n---\n\n".join(blocks)
 
-            if fname == "persona_base.txt" and persona:
-                text += f"\n\nActive persona: {persona}"
-
-            blocks.append(text)
+for p in ["full", "rag", "memory"]:
+    _PREBUILT_PROMPTS[p] = _build_phase_prompt(p)
+    
+# -----------------------------
+# PROMPT COMPOSER
+# -----------------------------
+def compose_system_prompt(persona=None, phase="full", extra_rules=None):
+    base = _PREBUILT_PROMPTS.get(phase, _PREBUILT_PROMPTS["full"])
+    
+    if persona:
+        base = base + f"\n\nActive persona: {persona}"
 
     if extra_rules:
-        blocks.append("\n".join(extra_rules))
+        base = base + "\n\n" + "\n".join(extra_rules)
 
-    return "\n\n---\n\n".join(blocks)
+    return base
+    
 
 # -----------------------------
 # PUBLIC ENTRYPOINT (PHASE 2)
@@ -94,7 +93,7 @@ def ask(
     persona: Optional[str] = None,
     phase: str = "full",
     stream: bool = False,
-    timeout: int = 30,
+    timeout: int = 12,
     **_
 ):
     """
