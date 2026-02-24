@@ -6,3 +6,4 @@ openai==0.28.1
 pinecone-client==2.2.4
 scikit-learn
 python-multipart
+python-dotenv
