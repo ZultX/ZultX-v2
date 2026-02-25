@@ -787,12 +787,56 @@ Use focus theme every time.
 
     return {"suggestions": suggestions[:3]}
 
+import os
+MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
+
+@app.get("/test-mistral-stream")
+def test_mistral_stream(q: str):
+    if not MISTRAL_KEY:
+        raise HTTPException(status_code=500, detail="Missing MISTRAL_API_KEY")
+
+    url = "https://api.mistral.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {MISTRAL_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "mistral-large-latest",
+        "messages": [{"role": "user", "content": q}],
+        "stream": True
+    }
+
+    def generate():
+        with requests.post(url, headers=headers, json=payload, stream=True) as r:
+            r.raise_for_status()
+            for line in r.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+
+                print("RAW:", line)  # ← watch logs
+
+                try:
+                    data = json.loads(line)
+                    delta = data.get("choices", [{}])[0].get("delta", {}).get("content")
+                    if delta:
+                        yield delta
+                except:
+                    yield line
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+    
 # health
 @app.get("/health")
 def health():
     return JSONResponse({"status": "ok"})
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
