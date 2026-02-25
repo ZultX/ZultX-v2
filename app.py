@@ -543,8 +543,9 @@ async def normalize_result_to_text(result: Any) -> str:
 # Try importing phase1 multimodal
 try:
     from phase_1 import ask as phase1_ask
-    from phase_1 import speak as phase1_speak
+    phase1_speak = None  # remove speak import
     print("[ZULTX] Phase1 multimodal loaded.")
+    print(phase1_ask("hello"))
 except Exception:
     phase1_ask = None
     phase1_speak = None
