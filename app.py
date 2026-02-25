@@ -549,7 +549,10 @@ except Exception:
     phase1_ask = None
     phase1_speak = None
     print("[ZULTX] Phase1 not available.")
-    
+
+from phase_1 import get_adapters_status
+print(get_adapters_status())
+
 @app.get("/ask")
 async def ask_get(
     request: Request,
