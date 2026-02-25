@@ -638,13 +638,12 @@ async def ask_stream(
         raise HTTPException(status_code=400, detail="Missing query")
 
     owner, session_id = extract_user_and_session(request)
-    # persist user's message (so convo buffer is available to phase4/db)
+
     try:
         persist_conversation(session_id, owner, "user", q, ts=datetime.utcnow())
     except Exception:
         pass
 
-    # Prepare kwargs for ASK_FUNC (stream = True)
     kwargs = {
         "user_input": q,
         "session_id": session_id,
@@ -657,54 +656,60 @@ async def ask_stream(
     }
 
     async def generator():
-    acc = []
+        acc = []
 
-    if ASK_FUNC is None:
-        text = local_fallback_ask_plain(q)
-        for ch in text:
-            yield ch.encode("utf-8")
-            await asyncio.sleep(0.01)
-        return
+        if ASK_FUNC is None:
+            text = local_fallback_ask_plain(q)
+            for ch in text:
+                yield ch.encode("utf-8")
+                await asyncio.sleep(0.01)
+            return
 
-    result = ASK_FUNC(**kwargs)
+        result = ASK_FUNC(**kwargs)
 
-    if asyncio.iscoroutine(result):
-        result = await result
+        if asyncio.iscoroutine(result):
+            result = await result
 
-    # async stream
-    if hasattr(result, "__aiter__"):
-        async for part in result:
-            if part:
-                s = str(part)
-                acc.append(s)
-                yield s.encode("utf-8")
+        # async stream
+        if hasattr(result, "__aiter__"):
+            async for part in result:
+                if part:
+                    s = str(part)
+                    acc.append(s)
+                    yield s.encode("utf-8")
 
-    # sync stream
-    elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
-        for part in result:
-            if part:
-                s = str(part)
-                acc.append(s)
-                yield s.encode("utf-8")
+        # sync stream
+        elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
+            for part in result:
+                if part:
+                    s = str(part)
+                    acc.append(s)
+                    yield s.encode("utf-8")
 
-    else:
-        # fallback if full text returned
-        text = str(result)
-        for ch in text:
-            yield ch.encode("utf-8")
-            await asyncio.sleep(0.005)
+        else:
+            text = str(result)
+            for ch in text:
+                yield ch.encode("utf-8")
+                await asyncio.sleep(0.005)
 
-    # Return streaming response; client will read the byte stream
+        # persist assistant message after stream ends
+        try:
+            final_text = "".join(acc)
+            persist_conversation(session_id, owner, "assistant", final_text, ts=datetime.utcnow())
+        except Exception:
+            pass
+
     return StreamingResponse(
-        generator(), 
+        generator(),
         media_type="text/plain; charset=utf-8",
         headers={
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "Transfer-Encoding": "chunked",
-        "X-Accel-Buffering": "no"   # VERY important
-    }
-)
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Transfer-Encoding": "chunked",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
 
 
 # Try importing phase1 multimodal
