@@ -100,7 +100,7 @@ def detect_intent(prompt: str) -> str:
 
 def detect_complexity(prompt: str) -> str:
     intent = detect_intent(prompt)
-    if intent == "reason":
+    if intent == "heavy":
         return "heavy"
     if intent == "long":
         return "normal"
