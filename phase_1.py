@@ -185,7 +185,7 @@ class OpenRouterAdapter(ModelAdapter):
         }
         headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
         try:
-            resp = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
+            resp = requests.post(self.endpoint, json=payload, headers=headers, stream=bool(stream))
             resp.raise_for_status()
             if not stream:
                 j = resp.json()
