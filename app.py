@@ -539,6 +539,16 @@ async def normalize_result_to_text(result: Any) -> str:
 # -------------------------
 # Protected ask endpoint — uses ASK_FUNC if available (phase_4 preferred)
 # -------------------------
+# Try importing phase1 multimodal
+try:
+    from phase_1 import ask as phase1_ask
+    from phase_1 import speak as phase1_speak
+    print("[ZULTX] Phase1 multimodal loaded.")
+except Exception:
+    phase1_ask = None
+    phase1_speak = None
+    print("[ZULTX] Phase1 not available.")
+    
 @app.get("/ask")
 async def ask_get(
     request: Request,
@@ -665,7 +675,6 @@ async def ask_stream(
                 await asyncio.sleep(0.01)
             return
 
-        from phase_1 import ask as phase1_ask
         result = phase1_ask(q, stream=True)
         print("TYPE:", type(result))
         print("IS GENERATOR:", hasattr(result, "__iter__"))
@@ -716,15 +725,6 @@ async def ask_stream(
 
 
 
-# Try importing phase1 multimodal
-try:
-    from phase_1 import ask as phase1_ask
-    from phase_1 import speak as phase1_speak
-    print("[ZULTX] Phase1 multimodal loaded.")
-except Exception:
-    phase1_ask = None
-    phase1_speak = None
-    print("[ZULTX] Phase1 not available.")
 
 @app.post("/generate-image")
 async def generate_image(payload: dict = Body(...)):
