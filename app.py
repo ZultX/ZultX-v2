@@ -723,7 +723,19 @@ async def ask_stream(
         }
     )
 
+@app.get("/debug_stream")
+def debug_stream(q: str):
 
+    def generator():
+        result = phase1_ask(q, stream=True)
+
+        print("TYPE INSIDE DEBUG:", type(result))
+
+        for chunk in result:
+            print("CHUNK:", chunk)
+            yield chunk
+
+    return StreamingResponse(generator(), media_type="text/plain")
 
 
 @app.post("/generate-image")
