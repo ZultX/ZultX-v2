@@ -666,7 +666,10 @@ async def ask_stream(
             return
 
         result = ASK_FUNC(**kwargs)
-
+        print("TYPE:", type(result))
+        print("IS GENERATOR:", hasattr(result, "__iter__"))
+        print("IS ASYNC:", hasattr(result, "__aiter__"))
+        
         if asyncio.iscoroutine(result):
             result = await result
 
