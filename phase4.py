@@ -1210,10 +1210,12 @@ def phase4_ask(user_input: str,
         import types
         import asyncio
         if stream:
-            if isinstance(phase3_result, types.GeneratorType):
-              return phase3_result
-            if hasattr(phase3_result, "__aiter__"):
-              return phase3_result
+          # If it's any iterable but NOT a string or dict → treat as stream
+          if hasattr(phase3_result, "__iter__") and not isinstance(phase3_result, (str, dict, bytes)):
+            return phase3_result
+          if hasattr(phase3_result, "__aiter__"):
+            return phase3_result
+            
     except Exception as e:
         try:
             phase3_result = phase3_ask(user_input, persona=persona, mode=mode, temperature=temperature, max_tokens=max_tokens, stream=stream, timeout=timeout)
@@ -1222,7 +1224,7 @@ def phase4_ask(user_input: str,
             return {"answer": "ZULTX error: reasoning core failed.", "explain": [], "memory_actions": [], "meta": {"latency_ms": int((time.time()-start)*1000), "fallback": True, "error": str(e2)}}
 
     answer_text = phase3_result if isinstance(phase3_result, str) else (phase3_result.get("answer") if isinstance(phase3_result, dict) else str(phase3_result))
-
+    print("STREAM RETURN TYPE:", type(phase3_result))
     # append assistant answer to buffer (persist)
     if session_id or owner:
         add_to_conversation_buffer(session_id, "assistant", answer_text, owner)
