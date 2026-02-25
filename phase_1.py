@@ -70,22 +70,32 @@ def now_s():
 # --------------------
 def detect_intent(prompt: str) -> str:
     txt = (prompt or "").strip().lower()
-    if not txt or len(txt) > 3:
+
+    if not txt:
         return "small"
-    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector", "vect"]):
+
+    # embeddings
+    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector"]):
         return "embed"
-    if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision", ".png"]):
+
+    # multimodal
+    if any(w in txt for w in ["image", "photo", "vision", ".png", ".jpg"]):
         return "multimodal"
+
     # heavy keywords
-    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis", "why", "does", "prove", "explain", "can", "why", "how", "will"]
-    score = 0
-    for t in heavy:
-        if t in txt:
-            score += 1
-    if len(txt) > 800 or score >= 1:
-        return "reason"
-    if len(txt) > 200:
+    heavy_keywords = [
+        "design", "architecture", "implement", "optimize",
+        "debug", "proof", "analysis", "explain",
+        "why", "how", "step by step", "derive",
+        "prove", "does", "can", "do", "what", "will"
+    ]
+
+    if any(word in txt for word in heavy_keywords):
+        return "heavy"
+
+    if len(txt) > 400:
         return "long"
+
     return "small"
 
 def detect_complexity(prompt: str) -> str:
@@ -298,12 +308,13 @@ class ModelRouter:
             ordered = ["trinity-preview","mistral-direct","openrouter","step-3.5-flash"]
             return [a for name in ordered for a in self.adapters if name in a.name]
         # complexity priority
-        if complexity == "heavy":
-            ordered = ["mistral-direct","trinity-preview","openrouter","step-3.5-flash"]
+        if intent == "heavy":
+            # FORCE mistral first
+            ordered = ["mistral-direct", "trinity-preview", "openrouter", "step-3.5-flash"]
         elif complexity == "normal":
-            ordered = ["mistral-direct", "trinity-preview","openrouter","step-3.5-flash"]
+            ordered = ["trinity-preview", "mistral-direct", "openrouter", "step-3.5-flash"]
         else:  # fast / small
-            ordered = ["step-3.5-flash","openrouter","trinity-preview","mistral-direct"]
+            ordered = ["step-3.5-flash", "trinity-preview", "openrouter", "mistral-direct"]
         # produce adapters in that order (unique)
         out = []
         for n in ordered:
