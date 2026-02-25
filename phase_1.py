@@ -7,6 +7,7 @@ import threading
 import traceback
 from typing import Generator, Optional, List, Union, Callable, Dict, Any
 import requests
+import base64
 
 # --------------------
 # Config (env-friendly)
