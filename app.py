@@ -665,7 +665,8 @@ async def ask_stream(
                 await asyncio.sleep(0.01)
             return
 
-        result = ASK_FUNC(**kwargs)
+        from phase_1 import ask as phase1_ask
+        result = phase1_ask(q, stream=True)
         print("TYPE:", type(result))
         print("IS GENERATOR:", hasattr(result, "__iter__"))
         print("IS ASYNC:", hasattr(result, "__aiter__"))
