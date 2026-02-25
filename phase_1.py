@@ -165,27 +165,25 @@ class MistralAdapter(ModelAdapter):
                 return j.get("choices", [{}])[0].get("message", {}).get("content") or j.get("output", {}).get("text", "") or ""
             # streaming generator
             def gen():
-                for chunk in resp.iter_lines(decode_unicode=True):
-                    if not chunk:
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line:
                         continue
-                    line = chunk.strip()
-                    try:
-                        j = json.loads(line)
-                        delta = j.get("choices", [{}])[0].get("delta", {}).get("content")
-                        if delta:
-                            yield delta
-                        else:
-                            c = j.get("choices", [{}])[0].get("message", {}).get("content")
-                            if c:
-                                yield c
-                    except Exception:
-                        yield line
-                return
-            return gen()
-        except Exception as e:
-            self.mark_unhealthy()
-            raise ModelFailure(f"mistral-error: {e}")
+                    line = line.strip()
+                    # Handle SSE format
+                    if line.startswith("data: "):
+                        line = line[len("data: "):]
 
+                    if line == "[DONE]":
+                        break
+
+                    try:
+                       j = json.loads(line)
+                       delta = j.get("choices", [{}])[0].get("delta", {}).get("content")
+                       if delta:
+                           yield delta
+                    except Exception:
+                       continue
+            return gen()
 # --------------------
 # Optional OpenAI Adapter (fallback)
 # --------------------
