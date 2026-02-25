@@ -184,6 +184,9 @@ class MistralAdapter(ModelAdapter):
                     except Exception:
                        continue
             return gen()
+            except Exception as e:
+                self.mark_unhealthy()
+                raise ModelFailure(f"mistral-error: {e}")
 # --------------------
 # Optional OpenAI Adapter (fallback)
 # --------------------
