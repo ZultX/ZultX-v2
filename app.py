@@ -656,69 +656,55 @@ async def ask_stream(
         "stream": True
     }
 
-    async def generator() -> AsyncIterator[bytes]:
-        acc_parts = []
-        try:
-            # call ASK_FUNC (may return async iterator / sync iterator / immediate result)
-            if ASK_FUNC is not None:
-                try:
-                    result = ASK_FUNC(**kwargs)
-                except TypeError:
-                    try:
-                        result = ASK_FUNC(q, session_id, owner, True)
-                    except Exception:
-                        # fallback to non-stream call when streaming isn't supported
-                        result = ASK_FUNC(q)
-                # if result is a coroutine, await it
-                if asyncio.iscoroutine(result):
-                    result = await result
+    async def generator():
+    acc = []
 
-                # If result is async iterator
-                if hasattr(result, "__aiter__"):
-                    async for part in result:
-                        try:
-                            s = "" if part is None else str(part)
-                        except Exception:
-                            s = ""
-                        acc_parts.append(s)
-                        # yield as bytes (client decodes)
-                        yield s.encode("utf-8")
-                # If result is sync iterator (but not a string/bytes)
-                elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes, dict)):
-                    for part in result:
-                        try:
-                            s = "" if part is None else str(part)
-                        except Exception:
-                            s = ""
-                        acc_parts.append(s)
-                        yield s.encode("utf-8")
-                else:
-                    # single result — send once
-                    s = "" if result is None else str(result)
-                    acc_parts.append(s)
-                    yield s.encode("utf-8")
-            else:
-                # fallback local text
-                s = local_fallback_ask_plain(q)
-                acc_parts.append(s)
+    if ASK_FUNC is None:
+        text = local_fallback_ask_plain(q)
+        for ch in text:
+            yield ch.encode("utf-8")
+            await asyncio.sleep(0.01)
+        return
+
+    result = ASK_FUNC(**kwargs)
+
+    if asyncio.iscoroutine(result):
+        result = await result
+
+    # async stream
+    if hasattr(result, "__aiter__"):
+        async for part in result:
+            if part:
+                s = str(part)
+                acc.append(s)
                 yield s.encode("utf-8")
-        except Exception as e:
-            # If streaming fails, yield a short error and end
-            err = f"\n\n[ZULTX stream error: {str(e)}]\n"
-            try:
-                yield err.encode("utf-8")
-            except Exception:
-                pass
-        finally:
-            # Persist the accumulated assistant response (single DB row)
-            try:
-                final_text = "".join(acc_parts)
-                persist_conversation(session_id, owner, "assistant", final_text, ts=datetime.utcnow())
-            except Exception as e:
-                print("[ask_stream] persist error:", e)
+
+    # sync stream
+    elif hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
+        for part in result:
+            if part:
+                s = str(part)
+                acc.append(s)
+                yield s.encode("utf-8")
+
+    else:
+        # fallback if full text returned
+        text = str(result)
+        for ch in text:
+            yield ch.encode("utf-8")
+            await asyncio.sleep(0.005)
 
     # Return streaming response; client will read the byte stream
-    return StreamingResponse(generator(), media_type="text/plain; charset=utf-8")
+    return StreamingResponse(
+        generator(), 
+        media_type="text/plain; charset=utf-8",
+        headers={
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Transfer-Encoding": "chunked",
+        "X-Accel-Buffering": "no"   # VERY important
+    }
+)
 
 
 # Try importing phase1 multimodal
