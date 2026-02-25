@@ -1435,8 +1435,8 @@ function localSaveInit(convoId){
   if(!all[convoId]) all[convoId] = { id: convoId, created: Date.now(), messages: [] };
   setAllHistory(all);
 }
-
-/* ---------- Send message flow (combined, robust) ---------- */
+  
+/* ---------- Streaming sendMessage() ---------- */
 async function sendMessage(){
   const text = input.value.trim();
   if(!text) return;
@@ -1445,30 +1445,83 @@ async function sendMessage(){
     currentConversationId = makeConvoId();
     localSaveInit(currentConversationId);
   }
-  addUserMsg(text);
+
+  addUserMsg(text);            // your UI helper that shows the user bubble
   input.value = '';
   sendBtn.disabled = true;
 
-  let aiDiv = document.createElement('div'); aiDiv.className = 'msg ai thinking'; aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
+  // create assistant bubble that we will update progressively
+  let aiDiv = document.createElement('div');
+  aiDiv.className = 'msg ai thinking';
+  aiDiv.innerHTML = `<div class="ai-pulse"></div>`;
   chatArea.appendChild(aiDiv);
+
   try{
     const token = getToken();
     const sessionId = ensureSessionId();
     const headers = { "Accept":"application/json", "X-Session-Id": sessionId };
     if(token) headers["Authorization"] = "Bearer " + token;
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, { method:"GET", headers });
-    if(!res.ok) throw new Error('Server error');
-    const data = await res.json();
-    const answer = data?.answer || "No response.";
+
+    // call streaming endpoint (new)
+    const res = await fetch(`${API_BASE}/ask_stream?q=${encodeURIComponent(text)}`, {
+      method: "GET",
+      headers
+    });
+
+    if(!res.ok){
+      // try to show json error if available
+      let errText = "Server error.";
+      try {
+        const j = await res.json();
+        errText = j?.error || j?.detail || errText;
+      } catch(e){}
+      throw new Error(errText);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let done = false;
+    let accumulated = "";
     aiDiv.classList.remove("thinking");
-    fakeStream(aiDiv, answer, 0);
-    saveMessageToHistory(currentConversationId, 'ai', answer);
-  }catch(err){
+
+    // read loop
+    while (!done) {
+      const { value, done: streamDone } = await reader.read();
+      done = streamDone;
+      if (value) {
+        const chunk = decoder.decode(value, { stream: true });
+        accumulated += chunk;
+
+        // render progressively — simple approach: plaintext then final process
+        // If you want markdown streaming, you can call marked.parse(accumulated)
+        // but beware of XSS if you allow HTML in messages. Here we safely set textContent,
+        // then when complete you can convert to markdown with addBubble if desired.
+        // We'll do a lightweight markdown render on the fly via marked for nicer look:
+        try {
+          // use marked only for nicer formatting; fallback to textContent
+          aiDiv.innerHTML = marked.parse(accumulated);
+        } catch(e){
+          aiDiv.textContent = accumulated;
+        }
+
+        // scroll newest into view
+        aiDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    // stream finished — accumulated contains full assistant reply
+    // store in history
+    saveMessageToHistory(currentConversationId, 'ai', accumulated);
+
+  } catch(err){
     console.error(err);
-    aiDiv.textContent = "⚠️ Connection error.";
-  }finally{ sendBtn.disabled = false; updateTempVisibility(); }
+    aiDiv.classList.remove("thinking");
+    aiDiv.textContent = "⚠️ Connection error: " + (err.message || err);
+  } finally {
+    sendBtn.disabled = false;
+    updateTempVisibility();
+  }
 }
-  
 /* ---------- Open / New conversation ---------- */
 startBtn && startBtn.addEventListener('click', ()=> {
   tempMode = false;
