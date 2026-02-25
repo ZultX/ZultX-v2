@@ -1459,7 +1459,7 @@ async function sendMessage(){
   try{
     const token = getToken();
     const sessionId = ensureSessionId();
-    const headers = { "Accept":"application/json", "X-Session-Id": sessionId };
+    const headers = { "Accept":"text/plain", "X-Session-Id": sessionId };
     if(token) headers["Authorization"] = "Bearer " + token;
 
     // call streaming endpoint (new)
@@ -1479,7 +1479,7 @@ async function sendMessage(){
     }
 
     const reader = res.body.getReader();
-    const decoder = new TextDecoder("utf-8");
+    const decoder = new TextDecoder("utf-8", { fatal: false });
     let done = false;
     let accumulated = "";
     aiDiv.classList.remove("thinking");
