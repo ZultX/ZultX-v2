@@ -16,7 +16,7 @@ MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
 OPENAI_KEY = os.getenv("OPENAI_KEY")    # optional fallback
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # optional (Gemini) - placeholder
 
-DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "12"))
+DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "30"))
 MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "2"))
 BACKOFF_BASE = float(os.getenv("PHASE1_BACKOFF_BASE", "0"))
 RATE_PER_SEC = float(os.getenv("PHASE1_RATE_PER_SEC", "1.0"))
