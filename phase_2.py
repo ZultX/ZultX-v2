@@ -22,8 +22,8 @@ import hashlib
 # -----------------------------
 # CONFIG
 # -----------------------------
-BASE_DIR = Path(__file__).resolve().parent
-ADAPTER_DIR = BASE_DIR / "prompt" / "adapters"
+
+ADAPTER_DIR = Path("prompt/adapters")
 
 
 # -----------------------------
@@ -35,7 +35,8 @@ def load_manifest():
     if not MANIFEST_PATH.exists():
         raise FileNotFoundError("manifest.json missing in adapters directory")
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    
+
+_MANIFEST = load_manifest()
 manifest = load_manifest()
 
 def load_adapters():
@@ -53,36 +54,37 @@ def load_adapters():
 
 
 _ADAPTERS = load_adapters()
-_PREBUILT_PROMPTS = {}
 
-def _build_phase_prompt(phase: str):
-    blocks = []
+# -----------------------------
+# PROMPT COMPOSER
+# -----------------------------
+def compose_system_prompt(
+    *,
+    persona: Optional[str] = None,
+    phase: str = "full",  # rag | memory | full
+    extra_rules: Optional[List[str]] = None
+) -> str:
+    blocks: List[str] = []
+
     for group in manifest["order"]:
+        # phase gating
         if phase == "rag" and group == "memory":
             continue
         if phase == "memory" and group == "truth":
             continue
-        for fname in manifest["groups"][group]:
-            blocks.append(_ADAPTERS[fname])
-    return "\n\n---\n\n".join(blocks)
 
-for p in ["full", "rag", "memory"]:
-    _PREBUILT_PROMPTS[p] = _build_phase_prompt(p)
-    
-# -----------------------------
-# PROMPT COMPOSER
-# -----------------------------
-def compose_system_prompt(persona=None, phase="full", extra_rules=None):
-    base = _PREBUILT_PROMPTS.get(phase, _PREBUILT_PROMPTS["full"])
-    
-    if persona:
-        base = base + f"\n\nActive persona: {persona}"
+        for fname in manifest["groups"][group]:
+            text = _ADAPTERS[fname]
+
+            if fname == "persona_base.txt" and persona:
+                text += f"\n\nActive persona: {persona}"
+
+            blocks.append(text)
 
     if extra_rules:
-        base = base + "\n\n" + "\n".join(extra_rules)
+        blocks.append("\n".join(extra_rules))
 
-    return base
-    
+    return "\n\n---\n\n".join(blocks)
 
 # -----------------------------
 # PUBLIC ENTRYPOINT (PHASE 2)
