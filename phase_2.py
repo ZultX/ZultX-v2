@@ -22,8 +22,8 @@ import hashlib
 # -----------------------------
 # CONFIG
 # -----------------------------
-
-ADAPTER_DIR = Path("prompt/adapters")
+BASE_DIR = Path(__file__).resolve().parent
+ADAPTER_DIR = BASE_DIR / "prompt" / "adapters"
 
 
 # -----------------------------
