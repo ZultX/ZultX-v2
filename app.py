@@ -49,7 +49,7 @@ except Exception:
 ASK_FUNC = None
 try:
     # note: user provided phase4 as "phase4" file; import if present
-    from phase4 import phase4_ask as phase4_ask_func
+    from phase_1 import ask as phase4_ask_func
     ASK_FUNC = phase4_ask_func
     print("[ZULTX] Using phase_4.phase4_ask()")
 except Exception as e:
@@ -576,8 +576,9 @@ async def normalize_result_to_text(result: Any) -> str:
 # -------------------------
 # Try importing phase1 multimodal
 try:
-    from phase_1 import ask as phase1_ask
+    phase1_ask = None
     phase1_speak = None  # remove speak import
+    print(phase1_ask("hi"))
     print("[ZULTX] Phase1 multimodal loaded.") 
 except Exception:
     phase1_ask = None
