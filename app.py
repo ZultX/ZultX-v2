@@ -545,7 +545,8 @@ try:
     from phase_1 import ask as phase1_ask
     phase1_speak = None  # remove speak import
     print("[ZULTX] Phase1 multimodal loaded.")
-    print(phase1_ask("hello"))
+    from phase_2 import ask as phase_2ask
+    print(phase_2ask("hello"))
 except Exception:
     phase1_ask = None
     phase1_speak = None
