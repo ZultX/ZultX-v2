@@ -93,7 +93,7 @@ def ask(
     persona: Optional[str] = None,
     phase: str = "full",
     stream: bool = False,
-    timeout: int = 12,
+    timeout: int = 30,
     **_
 ):
     """
