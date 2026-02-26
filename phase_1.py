@@ -311,15 +311,42 @@ class ImageGenAdapter(ModelAdapter):
                     return base64.b64decode(b64)
                 return str(j)
             elif prov == "openrouter":
-                headers = {"Authorization": f"Bearer {self.key}", "Content-Type":"application/json"}
-                payload = {"model": self.model, "prompt": prompt}
-                r = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout)
+                headers = {
+                  "Authorization": f"Bearer {self.key}",
+                  "Content-Type": "application/json",
+                }
+
+                payload = {
+                   "model": self.model,
+                   "messages": [
+                     {
+                      "role": "user",
+                      "content": prompt
+                     }
+                    ]
+                }
+                r = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=timeout
+                )
                 r.raise_for_status()
                 j = r.json()
-                b64 = (j.get("output",{}) or {}).get("images", [{}])[0].get("b64") or (j.get("data",[{}])[0].get("b64"))
-                if b64:
-                    return base64.b64decode(b64)
+                # Extract base64 image
+                b64 = (
+                    j.get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", [{}])[0]
+                    .get("image_url", {})
+                    .get("url")
+                )
+                if b64 and b64.startswith("data:image"):
+                    import re
+                    encoded = re.sub("^data:image/.+;base64,", "", b64)
+                    return base64.b64decode(encoded)
                 return str(j)
+
             else:
                 headers = {"Authorization": f"Bearer {self.key}", "Content-Type":"application/json"}
                 payload = {"model": self.model, "prompt": prompt, "size":"1024x1024"}
