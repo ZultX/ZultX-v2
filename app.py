@@ -126,6 +126,8 @@ def _put_conn(conn):
 # -------------------------
 # Schema - users + conversations (shared with phase4)
 # -------------------------
+
+        
 # IMPORTANT: We include both owner (used by phase4) and user_id (used by app)
 # and both ts and created_at timestamps so both sides are compatible.
 # If you already have an older conversations table on Postgres, drop it (or ALTER to add missing columns).
@@ -384,6 +386,38 @@ def list_letters():
     files = sorted([os.path.basename(p) for p in glob.glob(os.path.join(LETTERS_DIR, "*.txt"))])
     return JSONResponse({"letters": files})
 
+from phase_2 import compose_system_prompt, ask
+import traceback
+
+@app.get("/debug/phase2")
+def debug_phase2():
+    try:
+        system_prompt = compose_system_prompt(phase="full")
+
+        test_input = "Hello world"
+        final_prompt = (
+            f"<<SYSTEM>>\n{system_prompt}\n\n"
+            f"<<USER>>\n{test_input}\n\n"
+            f"<<ZULTX>>"
+        )
+
+        result = ask("Hello world")
+
+        return {
+            "status": "OK",
+            "system_prompt_length": len(system_prompt),
+            "final_prompt_length": len(final_prompt),
+            "preview": final_prompt[:500],
+            "model_response_preview": str(result)[:500]
+        }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+        
 @app.get("/letters/{name}")
 def get_letter(name: str):
     if ".." in name or not name.lower().endswith(".txt"):
@@ -544,9 +578,7 @@ async def normalize_result_to_text(result: Any) -> str:
 try:
     from phase_1 import ask as phase1_ask
     phase1_speak = None  # remove speak import
-    print("[ZULTX] Phase1 multimodal loaded.")
-    from phase_2 import ask as phase_2ask
-    print(phase_2ask("hello"))
+    print("[ZULTX] Phase1 multimodal loaded.") 
 except Exception:
     phase1_ask = None
     phase1_speak = None
