@@ -68,24 +68,29 @@ def now_s():
 # --------------------
 # Intent & Complexity Detection
 # --------------------
+REASONING_KEYWORDS = [
+    "why", "explain", "how does", "step by step",
+    "analyze", "compare", "design", "architecture",
+    "optimize", "debug", "deep", "theory", "proof"
+]
+
 def detect_intent(prompt: str) -> str:
     txt = (prompt or "").strip().lower()
     if not txt:
         return "small"
-    if any(w in txt for w in ["embed", "embedding", "vectorize", "vector"]):
-        return "embed"
-    if any(w in txt for w in ["image", "photo", "describe image", "generate an image", "img:", "vision"]):
-        return "multimodal"
-    # heavy keywords
-    heavy = ["design", "architecture", "implement", "optimize", "debug", "proof", "step by step", "analysis"]
-    score = 0
-    for t in heavy:
-        if t in txt:
-            score += 1
-    if len(txt) > 800 or score >= 1:
+
+    if any(k in txt for k in REASONING_KEYWORDS):
         return "reason"
-    if len(txt) > 250:
-        return "long"
+
+    if any(w in txt for w in ["embed", "embedding", "vector"]):
+        return "embed"
+
+    if any(w in txt for w in ["image", "photo", "vision"]):
+        return "multimodal"
+
+    if len(txt) > 600:
+        return "reason"
+
     return "small"
 
 def detect_complexity(prompt: str) -> str:
@@ -288,34 +293,23 @@ class ModelRouter:
     def __init__(self, adapters: List[ModelAdapter]):
         self.adapters = adapters
 
-    def _candidates_for_intent(self, intent: str, complexity: str) -> List[ModelAdapter]:
-        # Prioritized lists tuned for zones
-        if intent == "embed":
+    def _candidates_for_intent(self, intent: str, complexity: str):
+        # Hard routing rules (deterministic)
+          if intent == "embed":
             # embeddings would use dedicated embedding adapters (phase_3 handles embeddings), fallback to OpenRouter/OpenAI
             names = ("openai","openrouter","mistral-direct")
             return [a for a in self.adapters if any(n in a.name for n in names)]
+              
+        if intent == "reason":
+            return [a for a in self.adapters if a.name in ("mistral-direct", "trinity-preview")] + self.adapters
+
+        if intent == "small":
+            return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")] + self.adapters
+
         if intent == "multimodal":
-            # prefer OpenRouter trinity (if supports image) then mistral fallback
-            ordered = ["trinity-preview","mistral-direct","openrouter","step-3.5-flash"]
-            return [a for name in ordered for a in self.adapters if name in a.name]
-        # complexity priority
-        if complexity == "heavy":
-            ordered = ["mistral-direct","trinity-preview","openrouter","step-3.5-flash"]
-        elif complexity == "normal":
-            ordered = ["trinity-preview","openrouter","step-3.5-flash","mistral-direct"]
-        else:  # fast / small
-            ordered = ["step-3.5-flash","openrouter","trinity-preview","mistral-direct"]
-        # produce adapters in that order (unique)
-        out = []
-        for n in ordered:
-            for a in self.adapters:
-                if n in a.name and a not in out:
-                    out.append(a)
-        # append any other adapters not included
-        for a in self.adapters:
-            if a not in out:
-                out.append(a)
-        return out
+            return [a for a in self.adapters if a.name in ("imagegen", "trinity-preview")] + self.adapters
+
+        return self.adapters
 
     def ask(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT) -> Union[str, Generator[str, None, None]]:
         complexity = detect_complexity(prompt)
