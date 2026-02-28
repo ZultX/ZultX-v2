@@ -204,7 +204,7 @@ html.light .side-btn:hover{
   white-space: pre-wrap;
 }
 .side{
-  box-shadow: 4px 0 40px rgba(0,0,0,0.35);
+  box-shadow:none;
 }
 
 .msg.user{background:linear-gradient(180deg,#071326,#04101a);margin-left:auto;border-top-right-radius:6px;color:#cfe7ff;border-right:4px solid var(--accent-strong)}
@@ -848,9 +848,10 @@ html.light .side .convo-item{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.4);
+  background:transparent; /* REMOVE DARKNESS */
   z-index:8000;
 }
+
 /* 1. Ensure the Button is White */
 
 /* 2. The BLACK Triangle Head */
@@ -1079,10 +1080,12 @@ html.light .msg.ai{
   left: calc(var(--side-w) + 18px);
   right: 18px;
   bottom: 92px; /* above compose area */
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(18px);
   border-radius: 14px;
   padding: 12px;
-  display:flex;
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
   gap:12px;
   align-items:flex-start;
   justify-content:space-between;
@@ -1096,7 +1099,6 @@ html.light .msg.ai{
   border:1px solid rgba(255,255,255,0.04);
   flex-wrap:wrap; /* allow buttons to wrap into rows */
   max-width: calc(100% - var(--side-w) - 36px);
-  backdrop-filter: blur(6px);
 }
 .plus-panel.active{
   opacity:1;
@@ -1106,7 +1108,6 @@ html.light .msg.ai{
 
 /* mode buttons become an even two-column grid */
 .plus-panel .mode-btn{
-  width: calc(50% - 12px); /* two items per row, equal widths */
   height:72px;
   border-radius:12px;
   display:flex;
@@ -1162,10 +1163,11 @@ html.light .msg.ai{
   right:0;
   bottom:0;
   height:0;
-  background: linear-gradient(180deg, rgba(12,12,14,0.96), rgba(4,4,6,0.98));
-  border-top-left-radius:18px;
-  border-top-right-radius:18px;
-  box-shadow: 0 -16px 40px rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(20px);
+  border-top-left-radius:20px;
+  border-top-right-radius:20px;
+  box-shadow: 0 -8px 25px rgba(0,0,0,0.08);
   transition: height .28s cubic-bezier(.2,.9,.25,1);
   overflow:hidden;
   z-index:16000;
@@ -1174,6 +1176,7 @@ html.light .msg.ai{
   flex-direction:column;
   gap:12px;
 }
+  
 .bottom-sheet.open{ height:46vh; padding-bottom: env(safe-area-inset-bottom); }
 
 /* thumbnails */
