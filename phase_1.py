@@ -683,7 +683,7 @@ if getattr(ModelRouter, "_mm_patched", False) is False:
             return "No model available."
         # HARD LOCK: if small, do NOT fallback to others
         if intent == "small":
-            adapter = next((a for a in self.adapters if a.name == "trinity-preview"), None)
+            adapter = next((a for a in self.adapters if a.name == "openai"), None)
             if adapter and adapter.check_ready():
                 return adapter.generate(prompt, stream=stream, timeout=timeout)
             return "Trinity unavailable."
