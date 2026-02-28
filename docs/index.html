@@ -1991,6 +1991,13 @@ function localSaveInit(convoId){
   setAllHistory(all);
 }
 
+function showUploadSpinner(){
+  document.getElementById('uploadSpinner').style.display = 'block';
+}
+
+function hideUploadSpinner(){
+  document.getElementById('uploadSpinner').style.display = 'none';
+}
   
 /* ---------- Streaming sendMessage() ---------- */
 async function sendMessage(){
@@ -2034,7 +2041,7 @@ async function sendMessage(){
   }catch(err){
     console.error(err);
     aiDiv.textContent = "⚠️ Connection error.";
-  }finally{ uploadedFiles = []; renderFilePreview(); updateTokenDisplay(); sendBtn.disabled = false; updateTempVisibility(); }
+  }finally{ renderFilePreview(); updateTokenDisplay(); sendBtn.disabled = false; updateTempVisibility(); }
 }
   
 /* ---------- Open / New conversation ---------- */
@@ -2296,7 +2303,7 @@ function refreshAccountUI(){
   });
 
   // close on overlay click too (overlay already used by other modals)
-  overlay.addEventListener('click', ()=> { closePlusPanel(); });
+  document.getElementById('z-overlay')?.addEventListener('click', closePlusPanel);
 
   // modes (visual only)
   plusPanel.querySelectorAll('.mode-pill').forEach(p=>{
