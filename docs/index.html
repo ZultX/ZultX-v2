@@ -1072,7 +1072,111 @@ html.light .msg.ai{
   opacity: 0.75;
   transform: scale(0.99);
 }  
+/* ===== Plus floating panel & bottom sheet ===== */
+.plus-panel{
+  position: absolute;
+  bottom: 72px; /* sits above compose */
+  left: 14px;
+  background: linear-gradient(180deg, rgba(10,10,12,0.98), rgba(16,12,10,0.98));
+  border-radius: 14px;
+  padding: 10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  transform-origin: bottom left;
+  opacity:0;
+  pointer-events:none;
+  transform: translateY(8px) scale(.98);
+  transition: all .22s cubic-bezier(.2,.9,.25,1);
+  z-index:12000;
+  border:1px solid rgba(255,215,0,0.06);
+}
+.plus-panel.active{
+  opacity:1;
+  pointer-events:all;
+  transform: translateY(0) scale(1);
+}
 
+/* big square buttons inside the panel */
+.plus-panel .mode-btn{
+  width:64px;
+  height:64px;
+  border-radius:12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  font-weight:800;
+  background: rgba(255,255,255,0.03);
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,0.03);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.plus-panel .mode-btn:hover{
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  background: rgba(255,255,255,0.06);
+}
+.plus-panel .mode-btn div{font-size:12px; color:var(--muted); font-weight:700}
+
+/* mode pills (illusion) */
+.plus-panel .modes {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin-left:8px;
+}
+.mode-pill{
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.03);
+  font-size:12px;
+  cursor:pointer;
+  border:1px solid rgba(255,215,0,0.04);
+}
+.mode-pill.active{
+  background: linear-gradient(90deg,#ffd54a,#f3d36b);
+  color:#000;
+  box-shadow: 0 10px 30px rgba(255,215,0,0.12);
+}
+
+/* bottom sheet (half-screen) used to show upload progress / thumbs */
+.bottom-sheet{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:0;
+  background: linear-gradient(180deg, rgba(12,12,14,0.96), rgba(4,4,6,0.98));
+  border-top-left-radius:18px;
+  border-top-right-radius:18px;
+  box-shadow: 0 -30px 80px rgba(0,0,0,0.6);
+  transition: height .28s cubic-bezier(.2,.9,.25,1);
+  overflow:hidden;
+  z-index:16000;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.bottom-sheet.open{ height:45vh; padding-bottom: env(safe-area-inset-bottom); }
+
+/* thumbnails */
+.image-thumb{
+  width:78px;
+  height:78px;
+  border-radius:10px;
+  object-fit:cover;
+  border:1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+.thumb-row{ display:flex; gap:8px; align-items:center; }
+
+/* compact upload status line */
+.upload-status{ font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center; }
+  
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -1172,6 +1276,10 @@ html.light .msg.ai{
         </div>
         <div id="uploadSpinner" class="upload-spinner"></div>
         <input type="file" id="fileInput" accept=".txt" style="display:none;">
+        <!-- image & camera & video inputs (hidden) -->
+        <input type="file" id="imageInput" accept="image/*" style="display:none;" multiple>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+        <input type="file" id="videoInput" accept="video/*" style="display:none;">
         <!-- SEND -->
         <button class="send-square" id="sendBtn">
           ↑
@@ -1600,6 +1708,7 @@ function populateTempList(){
 
 /* close temp modal */
 closeTempBtn && closeTempBtn.addEventListener('click', ()=> { tempModal.style.display = 'none'; hideOverlay(); });
+
 function renderFilePreview(){
   filePreviewContainer.innerHTML = "";
 
@@ -1608,17 +1717,29 @@ function renderFilePreview(){
 
     const pill = document.createElement("div");
     pill.className = "file-pill";
-    pill.innerHTML = `
-      📄 ${file.name} (${sizeKB} KB • ${file.tokens} tokens)
-      <button data-index="${index}">✕</button>
-    `;
+
+    if(file.type === 'image'){
+      pill.innerHTML = `
+        <img src="${file.url}" class="image-thumb" alt="${file.name}" style="margin-right:8px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-weight:700">${file.name}</div>
+          <div style="font-size:12px;color:var(--muted)">${sizeKB} KB • ${file.tokens} tokens</div>
+        </div>
+        <div style="margin-left:auto"><button data-index="${index}">✕</button></div>
+      `;
+    } else {
+      pill.innerHTML = `
+        📄 ${file.name} (${sizeKB} KB • ${file.tokens} tokens)
+        <button data-index="${index}">✕</button>
+      `;
+    }
 
     filePreviewContainer.appendChild(pill);
   });
 
   document.querySelectorAll(".file-pill button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const i = btn.getAttribute("data-index");
+      const i = Number(btn.getAttribute("data-index"));
       uploadedFiles.splice(i,1);
       renderFilePreview();
     });
@@ -2070,6 +2191,201 @@ function refreshAccountUI(){
   }
 }
 
+/* ===== PLUS PANEL UI (floating 3 squares + modes illusion) ===== */
+(function setupPlusPanel(){
+  // create panel and bottom-sheet
+  const plusPanel = document.createElement('div');
+  plusPanel.id = 'plusPanel';
+  plusPanel.className = 'plus-panel';
+  plusPanel.innerHTML = `
+    <button class="mode-btn" id="cameraBtn" title="Open camera">
+      <span style="font-size:22px">📷</span>
+      <div>Camera</div>
+    </button>
+    <button class="mode-btn" id="imageUploadBtn" title="Upload image">
+      <span style="font-size:22px">🖼️</span>
+      <div>Image</div>
+    </button>
+    <button class="mode-btn" id="videoBtn" title="Video (soon)">
+      <span style="font-size:22px">🎞️</span>
+      <div>Video</div>
+    </button>
+    <div class="modes" aria-hidden="true">
+      <div class="mode-pill" data-mode="concise">Concise</div>
+      <div class="mode-pill" data-mode="creative">Creative</div>
+      <div class="mode-pill" data-mode="technical">Technical</div>
+    </div>
+  `;
+  // insert into document near compose tools
+  const composeInner = document.querySelector('.compose-inner');
+  composeInner && composeInner.appendChild(plusPanel);
+
+  // bottom-sheet
+  const bottomSheet = document.createElement('div');
+  bottomSheet.id = 'plusBottomSheet';
+  bottomSheet.className = 'bottom-sheet';
+  bottomSheet.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:800">Uploads</div>
+      <button id="closeSheet" class="menu-btn">Close</button>
+    </div>
+    <div id="thumbArea" class="thumb-row"></div>
+    <div id="uploadStatus" class="upload-status">No recent uploads</div>
+  `;
+  document.body.appendChild(bottomSheet);
+
+  // open/close behavior
+  plusBtn.addEventListener('click', (e)=>{
+    plusPanel.classList.toggle('active');
+    // small UX: focus first element
+    if(plusPanel.classList.contains('active')) {
+      document.getElementById('cameraBtn').focus();
+    }
+  });
+
+  // modes (illusion)
+  plusPanel.querySelectorAll('.mode-pill').forEach(p=>{
+    p.addEventListener('click', ()=>{
+      // toggle active look but don't actually change model
+      plusPanel.querySelectorAll('.mode-pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+      // small toast
+      const t = document.createElement('div');
+      t.textContent = `${p.dataset.mode} mode selected (preview only)`;
+      t.style.cssText = 'position:fixed;bottom:96px;left:18px;padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.8);color:#fff;z-index:19000;font-weight:700';
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 1400);
+    });
+  });
+
+  // wire camera / image / video buttons
+  const cameraInput = document.getElementById('cameraInput');
+  const imageInput = document.getElementById('imageInput');
+  const videoInput = document.getElementById('videoInput');
+
+  document.getElementById('cameraBtn').addEventListener('click', ()=> {
+    // open native camera on supporting devices
+    cameraInput.value = '';
+    cameraInput.click();
+    plusPanel.classList.remove('active');
+  });
+
+  document.getElementById('imageUploadBtn').addEventListener('click', ()=> {
+    imageInput.value = '';
+    imageInput.click();
+    plusPanel.classList.remove('active');
+  });
+
+  document.getElementById('videoBtn').addEventListener('click', ()=> {
+    alert('Video uploading coming soon — watch this space!');
+    plusPanel.classList.remove('active');
+  });
+
+  // show/hide bottom sheet
+  document.getElementById('closeSheet').addEventListener('click', ()=> {
+    bottomSheet.classList.remove('open');
+  });
+
+  // handle camera capture
+  cameraInput.addEventListener('change', async (ev)=>{
+    const file = ev.target.files && ev.target.files[0];
+    if(!file) return;
+    await handleImageFile(file, true);
+  });
+
+  // handle general image picks (multiple allowed)
+  imageInput.addEventListener('change', async (ev)=>{
+    const files = Array.from(ev.target.files || []);
+    for(const f of files){ await handleImageFile(f, false); }
+  });
+
+  // small helper exposed inside closure
+  async function handleImageFile(file, fromCamera=false){
+    // show sheet
+    bottomSheet.classList.add('open');
+    showUploadSpinner();
+    document.getElementById('uploadStatus').textContent = `Uploading ${file.name}...`;
+
+    // try upload to backend; if fails, fallback to local preview
+    try{
+      const form = new FormData();
+      form.append('image', file);
+      const res = await fetch(`${API_BASE}/upload-image`, { method:'POST', body: form });
+      if(res.ok){
+        const data = await res.json();
+        // expected { ok:true, url: "<public url>", filename: "..." }
+        uploadedFiles.push({
+          name: data.filename || file.name,
+          size: file.size,
+          url: data.url || '',
+          type: 'image',
+          tokens: estimateImageTokens(file)
+        });
+        document.getElementById('uploadStatus').textContent = `Uploaded ${file.name}`;
+      } else {
+        // fallback to local preview
+        throw new Error('Upload failed');
+      }
+    }catch(err){
+      console.warn('Image upload failed or API missing — using local preview', err);
+      const url = URL.createObjectURL(file);
+      uploadedFiles.push({
+        name: file.name,
+        size: file.size,
+        url,
+        type: 'image',
+        tokens: estimateImageTokens(file),
+        local:true
+      });
+      document.getElementById('uploadStatus').textContent = `Preview added: ${file.name} (local)`;
+    } finally {
+      hideUploadSpinner();
+      renderFilePreview(); // uses the enhanced version below if you replace it
+      populateThumbs();
+      // auto-close sheet after short delay
+      setTimeout(()=> { /* keep visible for user */ }, 400);
+    }
+  }
+
+  // small thumbnails renderer inside bottom sheet
+  function populateThumbs(){
+    const area = document.getElementById('thumbArea');
+    area.innerHTML = '';
+    uploadedFiles.filter(f=> f.type === 'image').forEach((f,i)=>{
+      const img = document.createElement('img');
+      img.className = 'image-thumb';
+      img.src = f.url || (f.local ? f.url : '');
+      img.alt = f.name;
+      const wrapper = document.createElement('div');
+      wrapper.style.display='flex';
+      wrapper.style.flexDirection='column';
+      wrapper.style.alignItems='center';
+      wrapper.style.gap='6px';
+      const btn = document.createElement('button');
+      btn.textContent='✕';
+      btn.style.fontSize='12px';
+      btn.style.border='none';
+      btn.style.background='transparent';
+      btn.style.color='var(--muted)';
+      btn.addEventListener('click', ()=> {
+        uploadedFiles.splice(i,1);
+        renderFilePreview();
+        populateThumbs();
+      });
+      wrapper.appendChild(img);
+      wrapper.appendChild(btn);
+      area.appendChild(wrapper);
+    });
+  }
+
+  // estimate image tokens roughly
+  function estimateImageTokens(file){
+    // images don't have text, but we keep a small token cost estimate for budgeting
+    return Math.max(10, Math.ceil(file.size / 1024)); // 1 token per KB fallback
+  }
+
+})();
+  
 refreshAccountUI();
 loadSuggestions();
   
