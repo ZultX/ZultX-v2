@@ -616,7 +616,7 @@ def rebuild_router_with_multimodal():
         except Exception: pass
 
     adapters.append(OpenRouterAdapter(model_name="openai/gpt-4o-mini", api_key=OPENROUTER_KEY))
-    adapters.append(MistralAdapter(api_key=MISTRAL_KEY))
+    # adapters.append(MistralAdapter(api_key=MISTRAL_KEY))
     # multimodal
     adapters.append(ImageGenAdapter())
     adapters.append(WhisperASRAdapter())
@@ -677,6 +677,14 @@ if getattr(ModelRouter, "_mm_patched", False) is False:
         intent = detect_intent(prompt if isinstance(prompt, str) else str(prompt))
         _emit_metric("route_selected", {"intent": intent, "complexity": complexity, "time": now_s()})
         candidates = self._candidates_for_intent(intent, complexity)
+        if not candidates:
+            return "No model available."
+        # HARD LOCK: if small, do NOT fallback to others
+        if intent == "small":
+            adapter = next((a for a in self.adapters if a.name == "trinity-preview"), None)
+            if adapter and adapter.check_ready():
+                return adapter.generate(prompt, stream=stream, timeout=timeout)
+            return "Trinity unavailable."
         last_err = None
         for adapter in candidates:
             try:
