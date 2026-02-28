@@ -293,27 +293,23 @@ class ModelRouter:
         self.adapters = adapters
 
     def _candidates_for_intent(self, intent: str, complexity: str):
-        # Hard routing rules (deterministic)
-        if intent == "embed":
-            # embeddings would use dedicated embedding adapters (phase_3 handles embeddings), fallback to OpenRouter/OpenAI
-            names = ("openai","openrouter","mistral-direct")
-            return [a for a in self.adapters if any(n in a.name for n in names)]
 
-        if intent == "reason":
-            priority = {"mistral-direct": 0, "trinity-preview": 1}
-            return sorted(
-                self.adapters,
-                key=lambda a: priority.get(a.name, 2)
-            )
-            
-        if intent == "small":
-            return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")]
+      if intent == "reason" or complexity == "heavy":
+        # Heavy always → Mistral first
+        return [a for a in self.adapters if a.name == "mistral-direct"]
 
-        if intent == "multimodal":
-            return [a for a in self.adapters if a.name in ("imagegen", "trinity-preview")] + self.adapters
+      if intent == "small":
+        # Small always → Trinity
+        return [a for a in self.adapters if a.name == "trinity-preview"]
 
-        return self.adapters
+      if intent == "multimodal":
+        return [a for a in self.adapters if a.name in ("imagegen", "trinity-preview")]
 
+      if intent == "embed":
+        return [a for a in self.adapters if a.name in ("openai", "openrouter")]
+
+      return self.adapters
+    
     def ask(self, prompt: str, stream: bool = False, timeout: int = DEFAULT_TIMEOUT) -> Union[str, Generator[str, None, None]]:
         complexity = detect_complexity(prompt)
         intent = detect_intent(prompt)
