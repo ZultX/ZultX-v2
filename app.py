@@ -577,20 +577,13 @@ async def normalize_result_to_text(result: Any) -> str:
 # Try importing phase1 multimodal
 try:
     from phase_1 import ask as phase1_ask
-    phase1_speak = None  # remove speak import
-    
-    print(phase1_ask("hi"))
-    from phase_2 import ask as phase2_ask
-    print(phase2_ask("hi"))
+    from phase_1 import speak as phase1_speak
     print("[ZULTX] Phase1 multimodal loaded.") 
 except Exception:
     phase1_ask = None
     phase1_speak = None
     print("[ZULTX] Phase1 not available.")
-
-from phase_1 import get_adapters_status
-print(get_adapters_status())
-
+    
 @app.get("/ask")
 async def ask_get(
     request: Request,
@@ -606,7 +599,7 @@ async def ask_get(
     try:
         owner, session_id = extract_user_and_session(request)
         source = request.query_params.get("source")
-        # Debugging log for production troubleshooting (will appear in Railway logs)
+        # Debugging log for production troubleshooting
         print(f"[ask] owner={owner} session_id={session_id} memory_mode={memory_mode} using_phase4={ASK_FUNC is not None}")
 
         # persist user's message (so convo buffer is available to phase4/db)
@@ -783,13 +776,8 @@ async def get_suggestions(request: Request):
     import random
     entropy = random.randint(1000, 9999)
     categories = ["science", "psychology", "technology", "future", "space", "society", "money",
- "history", "biology", "consciousness", "AI ethics", "climate", "energy",
- "cybersecurity", "gaming", "internet culture", "philosophy", "mythology",
- "productivity", "habits", "sleep", "dreams", "time",
- "dark web", "economics", "crypto", "startups",
- "longevity", "genetics", "memes", "social media", "decision-making",
- "automation", "robotics", "luxury", "black holes", "Mars colonization", "privacy", "identity",
- "language", "dopamine", "addiction", "power"]
+ "history", "biology", "consciousness", "economics", "luxury", "Mars colonization", "identity",
+"language", "dopamine", "addiction", "power", "trending", "news", "social-media"]
     random_cat = random.choice(categories)
     if ASK_FUNC:
         prompt = f"""
