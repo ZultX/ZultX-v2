@@ -215,16 +215,14 @@ html.light .msg.user{background:linear-gradient(180deg,#fff,#fbfbfb);color:var(-
 html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(--text);border-left:4px solid var(--accent)}
 
 /* compose area */
-.compose{
-  position:sticky;
-  bottom:0;
+.compose {
+  position: sticky;
   padding:14px;
-  background:var(--bg);
-  display:flex;
-  justify-content:center;
-  z-index:50;
+  bottom: 0;
+  background: var(--bg);
+  z-index: 100;
 }
-
+  
 .compose-inner{
   display:flex;
   align-items:center;
@@ -1246,12 +1244,17 @@ html.dark .plus-active-bg {
   color: #fff !important;
 }
 /* PINK BACKGROUND FOR TOOL AREA */
-html.light .modern-compose{
-  background: rgba(255, 105, 180, 0.12) !important; /* light pink */
+/* CLEAN WHITE INPUT BAR */
+
+.modern-compose{
+  background: #ffffff !important;
+  border-top: 1px solid rgba(0,0,0,0.06);
 }
 
+/* Dark mode version */
 html.dark .modern-compose{
-  background: rgba(255, 105, 180, 0.08) !important;
+  background: #1a1a1a !important;
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 .scroll-down-btn{
   position: fixed;
@@ -1259,6 +1262,25 @@ html.dark .modern-compose{
   bottom: 110px;
   display: none;
   z-index: 9999;
+}
+html, body {
+  height: 100%;
+}
+
+.app {
+  height: 100vh;
+  overflow: hidden;   /* prevents whole page moving */
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-wrap {
+  flex: 1;
+  overflow-y: auto;   /* only chat scrolls */
 }
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
