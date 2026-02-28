@@ -300,13 +300,12 @@ class ModelRouter:
             return [a for a in self.adapters if any(n in a.name for n in names)]
 
         if intent == "reason":
-            ordered = []
-            for name in ("mistral-direct", "trinity-preview"):
-                ordered += [a for a in self.adapters if a.name == name]
+            priority = {"mistral-direct": 0, "trinity-preview": 1}
+            return sorted(
+                self.adapters,
+                key=lambda a: priority.get(a.name, 2)
+            )
             
-            remaining = [a for a in self.adapters if a not in ordered]
-            return ordered + remaining
-    
         if intent == "small":
             return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")] + self.adapters
 
