@@ -1203,16 +1203,21 @@ html.light .msg.ai{
 
 /* ===== PINK ACTIVE STATE FOR + BUTTON ===== */
 
+
 .plus-active-bg {
   background: rgba(255, 182, 193, 0.18) !important; /* light pink */
   backdrop-filter: blur(8px);
   transition: background 0.25s ease;
 }
-
 html.dark .plus-active-bg {
   background: rgba(255, 105, 180, 0.12) !important;
 }
-
+  
+/* FORCE PINK WHEN + IS ACTIVE */
+#plusBtn.plus-active-bg{
+  background: #ff5db1 !important;
+  color: #fff !important;
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
