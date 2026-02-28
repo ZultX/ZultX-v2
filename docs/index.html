@@ -1277,6 +1277,11 @@ html, body {
   flex: 1;
   overflow-y: auto;   /* only chat scrolls */
 }
+/* Force readable text in dark mode */
+html.dark .plus-panel,
+html.dark .plus-panel * {
+  color: #ffffff !important;
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
