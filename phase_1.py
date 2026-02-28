@@ -307,7 +307,7 @@ class ModelRouter:
             )
             
         if intent == "small":
-            return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")] + self.adapters
+            return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")]
 
         if intent == "multimodal":
             return [a for a in self.adapters if a.name in ("imagegen", "trinity-preview")] + self.adapters
