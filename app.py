@@ -705,6 +705,36 @@ async def transcribe(file: UploadFile = File(...)):
         traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
 
+from fastapi import UploadFile, File
+
+@app.post("/upload-txt")
+async def upload_txt(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".txt"):
+        return JSONResponse({
+            "ok": False,
+            "error": "Sorry, only .txt files are supported for now."
+        }, status_code=400)
+
+    try:
+        content_bytes = await file.read()
+        text = content_bytes.decode("utf-8", errors="ignore")
+
+        if len(text) > 20000:
+            text = text[:20000] + "\n\n...[truncated]"
+
+        return JSONResponse({
+            "ok": True,
+            "filename": file.filename,
+            "text": text
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse({
+            "ok": False,
+            "error": str(e)
+        }, status_code=500)
+
 
 @app.post("/speak")
 async def speak(payload: dict = Body(...)):
