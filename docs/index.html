@@ -380,7 +380,10 @@ html.dark .msg.ai pre{
   gap:8px;
   margin-bottom:8px;
 }
-
+.chat-wrap{
+  scroll-behavior: smooth;
+  overflow-y: auto;
+}
 .file-pill{
   display:flex;
   align-items:center;
@@ -1229,7 +1232,7 @@ html.light .msg.ai{
 
 
 .plus-active-bg {
-  background: rgba(255, 182, 193, 0.18) !important; /* light pink */
+  background: rgba(255, 105, 180, 0.12) !important;
   backdrop-filter: blur(8px);
   transition: background 0.25s ease;
 }
@@ -1241,6 +1244,21 @@ html.dark .plus-active-bg {
 #plusBtn.plus-active-bg{
   background: #ff5db1 !important;
   color: #fff !important;
+}
+/* PINK BACKGROUND FOR TOOL AREA */
+html.light .modern-compose{
+  background: rgba(255, 105, 180, 0.12) !important; /* light pink */
+}
+
+html.dark .modern-compose{
+  background: rgba(255, 105, 180, 0.08) !important;
+}
+.scroll-down-btn{
+  position: fixed;
+  right: 24px;
+  bottom: 110px;
+  display: none;
+  z-index: 9999;
 }
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
@@ -2166,7 +2184,7 @@ input && input.addEventListener('keydown', function(e) {
     sendMessage();
   }
 });
-input && input.addEventListener("input", ()=> { input.style.height = "auto"; const maxHeight = 120; input.style.height = Math.min(input.scrollHeight, maxHeight) + "px";  input.style.overflowY = input.scrollHeight > maxHeight ? "auto" : "hidden"; });
+input && input.addEventListener("input", ()=> { input.style.height = "auto"; const maxHeight = 100; input.style.height = Math.min(input.scrollHeight, maxHeight) + "px"; });
 
 /* init: ensure conversation */
 if(!currentConversationId){ currentConversationId = makeConvoId(); localSaveInit(currentConversationId); }
@@ -2503,13 +2521,15 @@ chatArea.addEventListener("scroll", () => {
   }
 });
 
-scrollDownBtn.addEventListener("click", ()=>{
-  chatArea.scrollTo({
-    top: chatArea.scrollHeight,
-    behavior: "smooth"
-  });
-});
-  
+function toggleScrollButton(){
+  const nearBottom =
+    chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < 80;
+
+  scrollDownBtn.style.display = nearBottom ? "none" : "flex";
+}
+
+chatArea.addEventListener("scroll", toggleScrollButton);
+
 document.addEventListener('click', (e)=> {
   // if side is open and click outside sidePanel on mobile -> close
   if(sidePanel.classList.contains('open') && isMobile){
