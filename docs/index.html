@@ -1556,6 +1556,11 @@ function updateTokenDisplay(){
 }
 
 input.addEventListener("input", updateTokenDisplay);
+
+function estimateImageTokens(file){
+  // simple token estimate for images
+  return Math.ceil(file.size / 1000);
+}
   
 /* ---------- Temp button behavior (mobile-only) ---------- */
 function updateTempVisibility(){
