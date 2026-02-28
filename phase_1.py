@@ -92,13 +92,12 @@ def detect_intent(prompt: str) -> str:
         return "reason"
 
     return "small"
-
+    
+    
 def detect_complexity(prompt: str) -> str:
     intent = detect_intent(prompt)
     if intent == "reason":
         return "heavy"
-    if intent == "long":
-        return "normal"
     if intent in ("multimodal", "embed"):
         return intent
     return "fast"
@@ -295,7 +294,7 @@ class ModelRouter:
 
     def _candidates_for_intent(self, intent: str, complexity: str):
         # Hard routing rules (deterministic)
-          if intent == "embed":
+        if intent == "embed":
             # embeddings would use dedicated embedding adapters (phase_3 handles embeddings), fallback to OpenRouter/OpenAI
             names = ("openai","openrouter","mistral-direct")
             return [a for a in self.adapters if any(n in a.name for n in names)]
