@@ -2397,30 +2397,6 @@ function refreshAccountUI(){
     })(file);
   });
 
-  imageInput.addEventListener('change', async (ev)=>{
-    const files = Array.from(ev.target.files || []);
-    if(files.length) bottomSheet.classList.add('open');
-    for(const f of files){
-      // reuse the same image handling path (we already defined handleImageFile inside original code),
-      // but if it's not visible due to scope, we fallback to local inline logic similar to above.
-      try {
-        // try to call the original handleImageFile if present:
-        if(typeof handleImageFile === 'function') {
-          await handleImageFile(f, false);
-        } else {
-          // fallback local upload/preview logic:
-          const url = URL.createObjectURL(f);
-          uploadedFiles.push({ name:f.name, size:f.size, url, type:'image', tokens: estimateImageTokens(f), local:true });
-          document.getElementById('uploadStatus').textContent = `Preview added: ${f.name} (local)`;
-          renderFilePreview();
-          populateThumbs();
-        }
-      } catch(e){
-        console.warn(e);
-      }
-    }
-  });
-
   // thumbnail population function for bottomSheet (keeps in-sync)
   function populateThumbs(){
     const area = document.getElementById('thumbArea');
