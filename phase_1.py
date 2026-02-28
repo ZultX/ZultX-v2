@@ -303,8 +303,10 @@ class ModelRouter:
             ordered = []
             for name in ("mistral-direct", "trinity-preview"):
                 ordered += [a for a in self.adapters if a.name == name]
-            return ordered + self.adapters
             
+            remaining = [a for a in self.adapters if a not in ordered]
+            return ordered + remaining
+    
         if intent == "small":
             return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")] + self.adapters
 
