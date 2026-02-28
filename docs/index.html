@@ -1174,7 +1174,21 @@ html.light .msg.ai{
   color: #ffd54a;
   transform: translateY(-1px);
 }
-  
+
+html.light .msg.ai pre{
+  background: linear-gradient(145deg, #ffffff, #f4f6f8);
+  color: #1e293b;
+
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+html.light .msg.ai pre code{
+  color: #0f172a;
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
