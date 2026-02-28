@@ -1192,6 +1192,14 @@ html.light .msg.ai{
   
 /* compact upload status line */
 .upload-status{ font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center; }
+
+/* HARD REMOVE ANY DARK BOTTOM LAYER */
+.bottom-sheet,
+#z-overlay{
+  display:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
   
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
