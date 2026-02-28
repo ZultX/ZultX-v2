@@ -34,6 +34,10 @@ RATE_CAPACITY = float(os.getenv("PHASE1_RATE_CAPACITY", "5.0"))
 metrics_hook: Optional[Callable[[str, Dict], None]] = None
 health_check_hook: Optional[Callable[[], Dict[str, bool]]] = None
 
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
+OPENAI_KEY = os.getenv("OPENAI_KEY")
+
 def _emit_metric(event: str, meta: Dict = None):
     try:
         if metrics_hook:
@@ -598,9 +602,6 @@ def rebuild_router_with_multimodal():
     """Call this to rebuild global _router with multimodal adapters included.
        Safe to call multiple times."""
     adapters: List[ModelAdapter] = []
-    OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
-    MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
-    OPENAI_KEY = os.getenv("OPENAI_KEY")
     # Step/flash fast model (OpenRouter) — pass key via named param 'key' (convenience adapters expect key)
     
     try:
