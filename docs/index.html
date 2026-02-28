@@ -1072,25 +1072,31 @@ html.light .msg.ai{
   opacity: 0.75;
   transform: scale(0.99);
 }  
-/* ===== Plus floating panel & bottom sheet ===== */
+/* ===== Plus floating panel & bottom sheet (clean, grid layout) ===== */
 .plus-panel{
-  position: absolute;
-  bottom: 72px; /* sits above compose */
-  left: 14px;
-  background: linear-gradient(180deg, rgba(10,10,12,0.98), rgba(16,12,10,0.98));
+  position: fixed;
+  /* sit centered horizontally between side and right edge */
+  left: calc(var(--side-w) + 18px);
+  right: 18px;
+  bottom: 92px; /* above compose area */
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
   border-radius: 14px;
-  padding: 10px;
+  padding: 12px;
   display:flex;
-  gap:10px;
-  align-items:center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  transform-origin: bottom left;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  box-shadow: none; /* remove heavy black shadow for a cleaner look */
+  transform-origin: bottom center;
   opacity:0;
   pointer-events:none;
   transform: translateY(8px) scale(.98);
-  transition: all .22s cubic-bezier(.2,.9,.25,1);
+  transition: all .18s cubic-bezier(.2,.9,.25,1);
   z-index:12000;
-  border:1px solid rgba(255,215,0,0.06);
+  border:1px solid rgba(255,255,255,0.04);
+  flex-wrap:wrap; /* allow buttons to wrap into rows */
+  max-width: calc(100% - var(--side-w) - 36px);
+  backdrop-filter: blur(6px);
 }
 .plus-panel.active{
   opacity:1;
@@ -1098,43 +1104,50 @@ html.light .msg.ai{
   transform: translateY(0) scale(1);
 }
 
-/* big square buttons inside the panel */
+/* mode buttons become an even two-column grid */
 .plus-panel .mode-btn{
-  width:64px;
-  height:64px;
+  width: calc(50% - 12px); /* two items per row, equal widths */
+  height:72px;
   border-radius:12px;
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
   align-items:center;
-  justify-content:center;
-  gap:6px;
+  justify-content:flex-start;
+  gap:12px;
+  padding:10px;
   font-weight:800;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
   cursor:pointer;
   border:1px solid rgba(255,255,255,0.03);
   transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
 }
+.plus-panel .mode-btn span{ font-size:20px; display:block; }
+.plus-panel .mode-btn div{ font-size:14px; color:var(--text); font-weight:700; text-transform:none; }
+
+/* subtle hover */
 .plus-panel .mode-btn:hover{
   transform: translateY(-6px);
-  box-shadow: 0 18px 40px rgba(0,0,0,0.5);
-  background: rgba(255,255,255,0.06);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.04);
 }
-.plus-panel .mode-btn div{font-size:12px; color:var(--muted); font-weight:700}
 
-/* mode pills (illusion) */
+/* mode pills (small selector) */
 .plus-panel .modes {
   display:flex;
   gap:8px;
   align-items:center;
   margin-left:8px;
+  width:100%;
+  justify-content:flex-end;
 }
 .mode-pill{
   padding:6px 10px;
   border-radius:999px;
-  background:rgba(255,255,255,0.03);
+  background:rgba(255,255,255,0.02);
   font-size:12px;
   cursor:pointer;
-  border:1px solid rgba(255,215,0,0.04);
+  border:1px solid rgba(255,255,255,0.03);
+  color:var(--text);
 }
 .mode-pill.active{
   background: linear-gradient(90deg,#ffd54a,#f3d36b);
@@ -1142,7 +1155,7 @@ html.light .msg.ai{
   box-shadow: 0 10px 30px rgba(255,215,0,0.12);
 }
 
-/* bottom sheet (half-screen) used to show upload progress / thumbs */
+/* bottom sheet (half-screen) - visually light and clean */
 .bottom-sheet{
   position:fixed;
   left:0;
@@ -1152,16 +1165,16 @@ html.light .msg.ai{
   background: linear-gradient(180deg, rgba(12,12,14,0.96), rgba(4,4,6,0.98));
   border-top-left-radius:18px;
   border-top-right-radius:18px;
-  box-shadow: 0 -30px 80px rgba(0,0,0,0.6);
+  box-shadow: 0 -16px 40px rgba(0,0,0,0.35);
   transition: height .28s cubic-bezier(.2,.9,.25,1);
   overflow:hidden;
   z-index:16000;
-  padding:18px;
+  padding:16px;
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-.bottom-sheet.open{ height:45vh; padding-bottom: env(safe-area-inset-bottom); }
+.bottom-sheet.open{ height:46vh; padding-bottom: env(safe-area-inset-bottom); }
 
 /* thumbnails */
 .image-thumb{
@@ -1170,10 +1183,10 @@ html.light .msg.ai{
   border-radius:10px;
   object-fit:cover;
   border:1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
 .thumb-row{ display:flex; gap:8px; align-items:center; }
-
+  
 /* compact upload status line */
 .upload-status{ font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center; }
   
@@ -2191,23 +2204,23 @@ function refreshAccountUI(){
   }
 }
 
-/* ===== PLUS PANEL UI (floating 3 squares + modes illusion) ===== */
+/* ===== PLUS PANEL UI (clean grid + click-outside close) ===== */
 (function setupPlusPanel(){
-  // create panel and bottom-sheet
+  // create panel and bottom-sheet (clean grid)
   const plusPanel = document.createElement('div');
   plusPanel.id = 'plusPanel';
   plusPanel.className = 'plus-panel';
   plusPanel.innerHTML = `
     <button class="mode-btn" id="cameraBtn" title="Open camera">
-      <span style="font-size:22px">📷</span>
+      <span>📷</span>
       <div>Camera</div>
     </button>
     <button class="mode-btn" id="imageUploadBtn" title="Upload image">
-      <span style="font-size:22px">🖼️</span>
+      <span>🖼️</span>
       <div>Image</div>
     </button>
     <button class="mode-btn" id="videoBtn" title="Video (soon)">
-      <span style="font-size:22px">🎞️</span>
+      <span>🎞️</span>
       <div>Video</div>
     </button>
     <div class="modes" aria-hidden="true">
@@ -2220,41 +2233,71 @@ function refreshAccountUI(){
   const composeInner = document.querySelector('.compose-inner');
   composeInner && composeInner.appendChild(plusPanel);
 
-  // bottom-sheet
-  const bottomSheet = document.createElement('div');
-  bottomSheet.id = 'plusBottomSheet';
-  bottomSheet.className = 'bottom-sheet';
-  bottomSheet.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:800">Uploads</div>
-      <button id="closeSheet" class="menu-btn">Close</button>
-    </div>
-    <div id="thumbArea" class="thumb-row"></div>
-    <div id="uploadStatus" class="upload-status">No recent uploads</div>
-  `;
-  document.body.appendChild(bottomSheet);
+  // bottom-sheet (re-usable)
+  const bottomSheet = document.getElementById('plusBottomSheet') || (function createSheet(){
+    const bs = document.createElement('div');
+    bs.id = 'plusBottomSheet';
+    bs.className = 'bottom-sheet';
+    bs.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">Uploads</div>
+        <button id="closeSheet" class="menu-btn">Close</button>
+      </div>
+      <div id="thumbArea" class="thumb-row"></div>
+      <div id="uploadStatus" class="upload-status">No recent uploads</div>
+    `;
+    document.body.appendChild(bs);
+    return bs;
+  })();
 
-  // open/close behavior
+  // open/close behavior (toggle panel & bottom sheet)
+  function closePlusPanel(){
+    plusPanel.classList.remove('active');
+    bottomSheet.classList.remove('open');
+    hideOverlay();
+  }
+
+  function openPlusPanel(){
+    plusPanel.classList.add('active');
+    // keep bottomSheet closed unless we actually upload images
+    // but show minimal overlay so user can click out
+    showOverlay();
+    // keep overlay click to close
+  }
+
   plusBtn.addEventListener('click', (e)=>{
-    plusPanel.classList.toggle('active');
-    // small UX: focus first element
+    e.stopPropagation();
     if(plusPanel.classList.contains('active')) {
-      document.getElementById('cameraBtn').focus();
+      closePlusPanel();
+    } else {
+      openPlusPanel();
+      // focus first button
+      const first = plusPanel.querySelector('.mode-btn');
+      first && first.focus();
     }
   });
 
-  // modes (illusion)
+  // close panel when clicking outside
+  document.addEventListener('click', (ev)=>{
+    if(!plusPanel.contains(ev.target) && ev.target !== plusBtn && !plusBtn.contains(ev.target)){
+      closePlusPanel();
+    }
+  });
+
+  // close on overlay click too (overlay already used by other modals)
+  overlay.addEventListener('click', ()=> { closePlusPanel(); });
+
+  // modes (visual only)
   plusPanel.querySelectorAll('.mode-pill').forEach(p=>{
-    p.addEventListener('click', ()=>{
-      // toggle active look but don't actually change model
+    p.addEventListener('click', (ev)=>{
       plusPanel.querySelectorAll('.mode-pill').forEach(x=>x.classList.remove('active'));
       p.classList.add('active');
       // small toast
       const t = document.createElement('div');
       t.textContent = `${p.dataset.mode} mode selected (preview only)`;
-      t.style.cssText = 'position:fixed;bottom:96px;left:18px;padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.8);color:#fff;z-index:19000;font-weight:700';
+      t.style.cssText = 'position:fixed;bottom:120px;left:calc(var(--side-w) + 22px);padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.75);color:#fff;z-index:19000;font-weight:700';
       document.body.appendChild(t);
-      setTimeout(()=> t.remove(), 1400);
+      setTimeout(()=> t.remove(), 1200);
     });
   });
 
@@ -2263,93 +2306,107 @@ function refreshAccountUI(){
   const imageInput = document.getElementById('imageInput');
   const videoInput = document.getElementById('videoInput');
 
-  document.getElementById('cameraBtn').addEventListener('click', ()=> {
-    // open native camera on supporting devices
+  // helper to close panel and stop propagation
+  function preActionClose(e){
+    if(e && e.stopPropagation) e.stopPropagation();
+    closePlusPanel();
+  }
+
+  plusPanel.querySelector('#cameraBtn').addEventListener('click', (e)=> {
+    preActionClose(e);
     cameraInput.value = '';
     cameraInput.click();
-    plusPanel.classList.remove('active');
   });
 
-  document.getElementById('imageUploadBtn').addEventListener('click', ()=> {
+  plusPanel.querySelector('#imageUploadBtn').addEventListener('click', (e)=> {
+    preActionClose(e);
     imageInput.value = '';
     imageInput.click();
-    plusPanel.classList.remove('active');
   });
 
-  document.getElementById('videoBtn').addEventListener('click', ()=> {
+  plusPanel.querySelector('#videoBtn').addEventListener('click', (e)=> {
+    preActionClose(e);
     alert('Video uploading coming soon — watch this space!');
-    plusPanel.classList.remove('active');
   });
 
-  // show/hide bottom sheet
-  document.getElementById('closeSheet').addEventListener('click', ()=> {
+  // show/hide bottom sheet: close button
+  bottomSheet.querySelector('#closeSheet')?.addEventListener('click', ()=> {
     bottomSheet.classList.remove('open');
+    hideOverlay();
   });
 
-  // handle camera capture
+  // handle camera capture / image change — reuse existing handlers but ensure sheet opens
   cameraInput.addEventListener('change', async (ev)=>{
     const file = ev.target.files && ev.target.files[0];
     if(!file) return;
-    await handleImageFile(file, true);
-  });
-
-  // handle general image picks (multiple allowed)
-  imageInput.addEventListener('change', async (ev)=>{
-    const files = Array.from(ev.target.files || []);
-    for(const f of files){ await handleImageFile(f, false); }
-  });
-
-  // small helper exposed inside closure
-  async function handleImageFile(file, fromCamera=false){
-    // show sheet
     bottomSheet.classList.add('open');
     showUploadSpinner();
-    document.getElementById('uploadStatus').textContent = `Uploading ${file.name}...`;
-
-    // try upload to backend; if fails, fallback to local preview
-    try{
-      const form = new FormData();
-      form.append('image', file);
-      const res = await fetch(`${API_BASE}/upload-image`, { method:'POST', body: form });
-      if(res.ok){
-        const data = await res.json();
-        // expected { ok:true, url: "<public url>", filename: "..." }
+    // call your same handler locally (copied behavior)
+    await (async function handleImageFile_local(file){
+      try{
+        const form = new FormData();
+        form.append('image', file);
+        const res = await fetch(`${API_BASE}/upload-image`, { method:'POST', body: form });
+        if(res.ok){
+          const data = await res.json();
+          uploadedFiles.push({
+            name: data.filename || file.name,
+            size: file.size,
+            url: data.url || '',
+            type: 'image',
+            tokens: estimateImageTokens(file)
+          });
+          document.getElementById('uploadStatus').textContent = `Uploaded ${file.name}`;
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch(err){
+        const url = URL.createObjectURL(file);
         uploadedFiles.push({
-          name: data.filename || file.name,
+          name: file.name,
           size: file.size,
-          url: data.url || '',
+          url,
           type: 'image',
-          tokens: estimateImageTokens(file)
+          tokens: estimateImageTokens(file),
+          local:true
         });
-        document.getElementById('uploadStatus').textContent = `Uploaded ${file.name}`;
-      } else {
-        // fallback to local preview
-        throw new Error('Upload failed');
+        document.getElementById('uploadStatus').textContent = `Preview added: ${file.name} (local)`;
+      } finally {
+        hideUploadSpinner();
+        renderFilePreview();
+        populateThumbs();
       }
-    }catch(err){
-      console.warn('Image upload failed or API missing — using local preview', err);
-      const url = URL.createObjectURL(file);
-      uploadedFiles.push({
-        name: file.name,
-        size: file.size,
-        url,
-        type: 'image',
-        tokens: estimateImageTokens(file),
-        local:true
-      });
-      document.getElementById('uploadStatus').textContent = `Preview added: ${file.name} (local)`;
-    } finally {
-      hideUploadSpinner();
-      renderFilePreview(); // uses the enhanced version below if you replace it
-      populateThumbs();
-      // auto-close sheet after short delay
-      setTimeout(()=> { /* keep visible for user */ }, 400);
-    }
-  }
+    })(file);
+  });
 
-  // small thumbnails renderer inside bottom sheet
+  imageInput.addEventListener('change', async (ev)=>{
+    const files = Array.from(ev.target.files || []);
+    if(files.length) bottomSheet.classList.add('open');
+    for(const f of files){
+      // reuse the same image handling path (we already defined handleImageFile inside original code),
+      // but if it's not visible due to scope, we fallback to local inline logic similar to above.
+      try {
+        // try to call the original handleImageFile if present:
+        if(typeof handleImageFile === 'function') {
+          await handleImageFile(f, false);
+        } else {
+          // fallback local upload/preview logic:
+          const url = URL.createObjectURL(f);
+          uploadedFiles.push({ name:f.name, size:f.size, url, type:'image', tokens: estimateImageTokens(f), local:true });
+          document.getElementById('uploadStatus').textContent = `Preview added: ${f.name} (local)`;
+          renderFilePreview();
+          populateThumbs();
+        }
+      } catch(e){
+        console.warn(e);
+      }
+    }
+  });
+
+  // thumbnail population function for bottomSheet (keeps in-sync)
   function populateThumbs(){
     const area = document.getElementById('thumbArea');
+    if(!area) return;
     area.innerHTML = '';
     uploadedFiles.filter(f=> f.type === 'image').forEach((f,i)=>{
       const img = document.createElement('img');
@@ -2378,11 +2435,8 @@ function refreshAccountUI(){
     });
   }
 
-  // estimate image tokens roughly
-  function estimateImageTokens(file){
-    // images don't have text, but we keep a small token cost estimate for budgeting
-    return Math.max(10, Math.ceil(file.size / 1024)); // 1 token per KB fallback
-  }
+  // expose small helper to global scope for re-use if needed
+  window.populateThumbs = populateThumbs;
 
 })();
   
