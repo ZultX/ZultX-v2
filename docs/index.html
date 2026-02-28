@@ -1350,11 +1350,11 @@ html.dark .modern-compose{
         <div class="compose-tools">
           <button class="tool-square" id="plusBtn">+</button>
           <button class="tool-square" id="attachBtn">📎</button>
-          <button id="scrollDownBtn" class="scroll-down-btn">↓</button>
         </div>
         <!-- INPUT -->
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
         <div id="tokenCounter" class="token-counter">0 tokens</div>
+        <button id="scrollDownBtn" class="scroll-down-btn">↓</button>
         <div id="dropOverlay" class="drop-overlay">
           Drop txt files here
         </div>
@@ -2521,6 +2521,8 @@ chatArea.addEventListener("scroll", () => {
   }
 });
 
+const scrollDownBtn = document.getElementById("scrollDownBtn");
+
 function toggleScrollButton(){
   const nearBottom =
     chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < 80;
@@ -2530,6 +2532,14 @@ function toggleScrollButton(){
 
 chatArea.addEventListener("scroll", toggleScrollButton);
 
+scrollDownBtn.addEventListener("click", ()=>{
+  chatArea.scrollTo({
+    top: chatArea.scrollHeight,
+    behavior: "smooth"
+  });
+});
+
+  
 document.addEventListener('click', (e)=> {
   // if side is open and click outside sidePanel on mobile -> close
   if(sidePanel.classList.contains('open') && isMobile){
