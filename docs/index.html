@@ -1180,7 +1180,8 @@ const p_eye = document.getElementById("p_eye");
 const p_msg = document.getElementById("p_msg");
 const plusBtn = document.getElementById("plusBtn");
 const attachBtn = document.getElementById("attachBtn");
-
+const fileInput = document.getElementById("fileInput");
+  
 plusBtn?.addEventListener("click", ()=>{
   alert("Tools panel (Preview only)");
 });
@@ -1191,10 +1192,10 @@ attachBtn?.addEventListener("click", ()=>{
   
 let currentConversationId = null;
 let tempMode = false;
-let uploadedFiles = [];
 let uploadedFileName = null;
 let uploadedFiles = [];
-
+let premiumMode = "login";
+  
 fileInput.setAttribute("multiple", "true");
 
 fileInput.addEventListener("change", async () => {
@@ -1212,7 +1213,7 @@ fileInput.addEventListener("change", async () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/upload-txt", {
+    const res = await fetch(`${API_BASE}/upload-txt`, {
       method: "POST",
       body: formData
     });
@@ -1244,8 +1245,7 @@ function estimateTokens(text){
   return Math.ceil(text.length / 4);
 }
   
-const fileInput = document.getElementById("fileInput");
-const attachBtn = document.getElementById("attachBtn");
+
 const filePreviewContainer = document.createElement("div");
 filePreviewContainer.className = "file-preview-container";
 document.querySelector(".compose").prepend(filePreviewContainer);
@@ -1254,36 +1254,6 @@ attachBtn.addEventListener("click", () => {
   fileInput.click();
 });
 
-fileInput.addEventListener("change", async () => {
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  if (!file.name.toLowerCase().endsWith(".txt")) {
-    alert("Sorry, only .txt files are supported 💙");
-    fileInput.value = "";
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await fetch("/upload-txt", {
-    method: "POST",
-    body: formData
-  });
-
-  const data = await res.json();
-
-  if (!data.ok) {
-    alert(data.error);
-    return;
-  }
-
-  uploadedFileText = data.text;
-  uploadedFileName = data.filename;
-
-  renderFilePreview();
-});
   
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
@@ -1810,7 +1780,7 @@ async function sendMessage(){
   }catch(err){
     console.error(err);
     aiDiv.textContent = "⚠️ Connection error.";
-  }finally{ sendBtn.disabled = false; updateTempVisibility(); }
+  }finally{ uploadedFiles = []; renderFilePreview(); updateTokenDisplay(); sendBtn.disabled = false; updateTempVisibility(); }
 }
   
 /* ---------- Open / New conversation ---------- */
