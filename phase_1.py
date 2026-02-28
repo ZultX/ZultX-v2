@@ -21,10 +21,7 @@ import requests
 
 # --------------------
 # Config (env-friendly)
-# --------------------
-OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
-MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
-OPENAI_KEY = os.getenv("OPENAI_KEY")  # optional fallback for some use-cases
+# --------------------  # optional fallback for some use-cases
 
 DEFAULT_TIMEOUT = int(os.getenv("PHASE1_DEFAULT_TIMEOUT", "30"))
 MAX_ATTEMPTS = int(os.getenv("PHASE1_MAX_ATTEMPTS", "3"))
@@ -601,7 +598,11 @@ def rebuild_router_with_multimodal():
     """Call this to rebuild global _router with multimodal adapters included.
        Safe to call multiple times."""
     adapters: List[ModelAdapter] = []
+    OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY")
+    MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
+    OPENAI_KEY = os.getenv("OPENAI_KEY")
     # Step/flash fast model (OpenRouter) — pass key via named param 'key' (convenience adapters expect key)
+    
     try:
         adapters.append(StepFlashOpenRouter(key=OPENROUTER_KEY))
     except Exception:
