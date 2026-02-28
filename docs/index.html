@@ -1299,7 +1299,7 @@ html.light .msg.ai{
           Drop txt files here
         </div>
         <div id="uploadSpinner" class="upload-spinner"></div>
-        <input type="file" id="fileInput" accept=".txt" style="display:none;">
+        <input type="file" id="fileInput" accept=".txt,image/*" style="display:none;" multiple>
         <!-- image & camera & video inputs (hidden) -->
         <input type="file" id="imageInput" accept="image/*" style="display:none;" multiple>
         <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
@@ -1438,44 +1438,61 @@ let uploadedFiles = [];
 let premiumMode = "login";
   
 fileInput.setAttribute("multiple", "true");
-
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files);
   if (!files.length) return;
 
   for (const file of files) {
-    if (!file.name.toLowerCase().endsWith(".txt")) {
-      alert(`${file.name} is not a .txt file 💙`);
-      continue;
+
+    // ===== TXT FILES =====
+    if (file.name.toLowerCase().endsWith(".txt")) {
+
+      showUploadSpinner();
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE}/upload-txt`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      hideUploadSpinner();
+
+      if (!data.ok) {
+        alert(data.error);
+        continue;
+      }
+
+      uploadedFiles.push({
+        name: data.filename,
+        size: file.size,
+        text: data.text,
+        type: "text",
+        tokens: estimateTokens(data.text)
+      });
     }
 
-    showUploadSpinner();
+    // ===== IMAGES =====
+    else if (file.type.startsWith("image/")) {
 
-    const formData = new FormData();
-    formData.append("file", file);
+      const url = URL.createObjectURL(file);
 
-    const res = await fetch(`${API_BASE}/upload-txt`, {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-
-    hideUploadSpinner();
-
-    if (!data.ok) {
-      alert(data.error);
-      continue;
+      uploadedFiles.push({
+        name: file.name,
+        size: file.size,
+        url: url,
+        type: "image",
+        tokens: estimateImageTokens(file),
+        local: true
+      });
     }
 
-    const tokens = estimateTokens(data.text);
-
-    uploadedFiles.push({
-      name: data.filename,
-      size: file.size,
-      text: data.text,
-      tokens
-    });
+    else {
+      alert("Only .txt files and images are allowed 💙");
+    }
   }
 
   renderFilePreview();
@@ -1495,38 +1512,6 @@ attachBtn.addEventListener("click", () => {
   fileInput.click();
 });
 
-// ===== IMAGE UPLOAD (same behavior as TXT) =====
-const imageInput = document.getElementById("imageInput");
-
-imageInput.setAttribute("multiple", "true");
-
-imageInput.addEventListener("change", () => {
-  const files = Array.from(imageInput.files);
-  if (!files.length) return;
-
-  for (const file of files) {
-
-    // Only allow images
-    if (!file.type.startsWith("image/")) {
-      alert(file.name + " is not an image 💙");
-      continue;
-    }
-
-    const url = URL.createObjectURL(file);
-
-    uploadedFiles.push({
-      name: file.name,
-      size: file.size,
-      url: url,
-      type: "image",
-      tokens: estimateImageTokens(file),
-      local: true
-    });
-  }
-
-  renderFilePreview();
-  imageInput.value = "";
-});
   
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
@@ -2354,7 +2339,6 @@ function refreshAccountUI(){
 
   // wire camera / image / video buttons
   const cameraInput = document.getElementById('cameraInput');
-  const imageInput = document.getElementById('imageInput');
   const videoInput = document.getElementById('videoInput');
 
   // helper to close panel and stop propagation
