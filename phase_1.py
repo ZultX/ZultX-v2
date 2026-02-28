@@ -239,7 +239,7 @@ class MistralAdapter(ModelAdapter):
         if not self.bucket.consume():
             raise ModelFailure("rate_limited")
 
-        payload = {"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "stream": bool(stream)}
+        payload = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "stream": bool(stream)}
         headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
         try:
             resp = requests.post(self.endpoint, json=payload, headers=headers, timeout=timeout, stream=bool(stream))
@@ -301,7 +301,7 @@ class ModelRouter:
 
       if intent == "small":
         # Small always → Trinity
-        return [a for a in self.adapters if a.name == "trinity-preview"]
+        return [a for a in self.adapters if a.name == "openai"]
 
       if intent == "multimodal":
         return [a for a in self.adapters if a.name in ("imagegen", "trinity-preview")]
@@ -618,7 +618,7 @@ def rebuild_router_with_multimodal():
         except Exception: pass
 
     adapters.append(OpenRouterAdapter(model_name="openai/gpt-4o-mini", api_key=OPENROUTER_KEY))
-    # adapters.append(MistralAdapter(api_key=MISTRAL_KEY))
+    adapters.append(MistralAdapter(api_key=MISTRAL_KEY))
     # multimodal
     adapters.append(ImageGenAdapter())
     adapters.append(WhisperASRAdapter())
