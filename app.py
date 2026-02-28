@@ -694,7 +694,23 @@ async def generate_image(payload: dict = Body(...)):
 
 
 from fastapi import UploadFile, File
+@app.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    folder = "static/uploads"
+    os.makedirs(folder, exist_ok=True)
 
+    filename = f"{int(time.time())}_{file.filename}"
+    path = os.path.join(folder, filename)
+
+    with open(path, "wb") as f:
+        f.write(await file.read())
+
+    return {
+        "ok": True,
+        "url": f"/static/uploads/{filename}",
+        "filename": filename
+    }
+    
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...)):
     if not phase1_ask:
