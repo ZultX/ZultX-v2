@@ -1495,6 +1495,38 @@ attachBtn.addEventListener("click", () => {
   fileInput.click();
 });
 
+// ===== IMAGE UPLOAD (same behavior as TXT) =====
+const imageInput = document.getElementById("imageInput");
+
+imageInput.setAttribute("multiple", "true");
+
+imageInput.addEventListener("change", () => {
+  const files = Array.from(imageInput.files);
+  if (!files.length) return;
+
+  for (const file of files) {
+
+    // Only allow images
+    if (!file.type.startsWith("image/")) {
+      alert(file.name + " is not an image 💙");
+      continue;
+    }
+
+    const url = URL.createObjectURL(file);
+
+    uploadedFiles.push({
+      name: file.name,
+      size: file.size,
+      url: url,
+      type: "image",
+      tokens: estimateImageTokens(file),
+      local: true
+    });
+  }
+
+  renderFilePreview();
+  imageInput.value = "";
+});
   
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
@@ -2238,10 +2270,6 @@ function refreshAccountUI(){
       <span>📷</span>
       <div>Camera</div>
     </button>
-    <button class="mode-btn" id="imageUploadBtn" title="Upload image">
-      <span>🖼️</span>
-      <div>Image</div>
-    </button>
     <button class="mode-btn" id="videoBtn" title="Video (soon)">
       <span>🎞️</span>
       <div>Video</div>
@@ -2341,11 +2369,6 @@ function refreshAccountUI(){
     cameraInput.click();
   });
 
-  plusPanel.querySelector('#imageUploadBtn').addEventListener('click', (e)=> {
-    preActionClose(e);
-    imageInput.value = '';
-    imageInput.click();
-  });
 
   plusPanel.querySelector('#videoBtn').addEventListener('click', (e)=> {
     preActionClose(e);
