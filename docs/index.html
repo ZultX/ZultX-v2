@@ -1072,6 +1072,109 @@ html.light .msg.ai{
   opacity: 0.75;
   transform: scale(0.99);
 }  
+/* ============================= */
+/*        GOD-TIER CODE         */
+/* ============================= */
+
+/* Block wrapper */
+.msg.ai pre{
+  position: relative;
+  background: linear-gradient(145deg, #0d1117, #111827);
+  border-radius: 18px;
+  padding: 22px 20px 18px 20px;
+  margin: 18px 0;
+  overflow-x: auto;
+
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 14.5px;
+  line-height: 1.7;
+
+  box-shadow:
+    0 15px 40px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+
+  border: 1px solid rgba(255,255,255,0.05);
+
+  transition: all .25s ease;
+}
+
+/* Subtle hover elevation */
+@media (hover:hover){
+  .msg.ai pre:hover{
+    transform: translateY(-3px);
+    box-shadow:
+      0 25px 60px rgba(0,0,0,0.65),
+      0 0 0 1px rgba(255,215,0,0.08);
+  }
+}
+
+/* Language badge */
+.msg.ai pre::before{
+  content: attr(data-lang);
+  position: absolute;
+  top: 10px;
+  left: 14px;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+
+  padding: 4px 10px;
+  border-radius: 999px;
+
+  background: rgba(255,215,0,0.08);
+  color: #ffd54a;
+
+  border: 1px solid rgba(255,215,0,0.25);
+}
+
+/* Code text */
+.msg.ai pre code{
+  color: #e6edf3;
+}
+
+/* Scrollbar */
+.msg.ai pre::-webkit-scrollbar{
+  height: 8px;
+}
+
+.msg.ai pre::-webkit-scrollbar-thumb{
+  background: rgba(255,215,0,0.25);
+  border-radius: 8px;
+}
+
+.msg.ai pre::-webkit-scrollbar-track{
+  background: transparent;
+}
+
+/* Copy button premium style */
+.copy-btn{
+  position: absolute;
+  top: 12px;
+  right: 14px;
+
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(6px);
+
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+
+  color: #e6edf3;
+  cursor: pointer;
+
+  transition: all .2s ease;
+}
+
+.copy-btn:hover{
+  background: rgba(255,215,0,0.12);
+  color: #ffd54a;
+  transform: translateY(-1px);
+}
+  
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
