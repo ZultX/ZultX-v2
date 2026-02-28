@@ -94,7 +94,11 @@ app.add_middleware(
 
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY") 
+MISTRAL_KEY = os.getenv("MISTRAL_API_KEY")
 
+print("OPENROUTER:", bool(OPENROUTER_KEY))
+print("MISTRAL:", bool(MISTRAL_KEY))
 # -------------------------
 # Postgres pool & init (fail-fast)
 # -------------------------
