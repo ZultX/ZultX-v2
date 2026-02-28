@@ -374,6 +374,39 @@ html.dark .msg.ai pre{
 .msg{
   transition: transform .15s ease, box-shadow .15s ease;
 }
+.file-preview-container{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+.file-pill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#1a73e8;
+  color:white;
+  padding:6px 12px;
+  border-radius:14px;
+  font-size:13px;
+  font-weight:600;
+  animation: fadeInFile 0.2s ease;
+}
+
+.file-pill button{
+  background:transparent;
+  border:none;
+  color:white;
+  font-size:14px;
+  cursor:pointer;
+}
+
+@keyframes fadeInFile{
+  from{ opacity:0; transform:translateY(-4px);}
+  to{ opacity:1; transform:translateY(0);}
+}
+  
 @media (max-width:600px){
   .modal{
     left:4%;
@@ -980,6 +1013,7 @@ html.light .side .convo-item{
         </div>
         <!-- INPUT -->
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
+        <input type="file" id="fileInput" accept=".txt" style="display:none;">
         <!-- SEND -->
         <button class="send-square" id="sendBtn">
           ↑
@@ -1112,7 +1146,50 @@ attachBtn?.addEventListener("click", ()=>{
   
 let currentConversationId = null;
 let tempMode = false;
+let uploadedFileText = null;
+let uploadedFileName = null;
 
+const fileInput = document.getElementById("fileInput");
+const attachBtn = document.getElementById("attachBtn");
+const filePreviewContainer = document.createElement("div");
+filePreviewContainer.className = "file-preview-container";
+document.querySelector(".compose").prepend(filePreviewContainer);
+
+attachBtn.addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith(".txt")) {
+    alert("Sorry, only .txt files are supported 💙");
+    fileInput.value = "";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/upload-txt", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await res.json();
+
+  if (!data.ok) {
+    alert(data.error);
+    return;
+  }
+
+  uploadedFileText = data.text;
+  uploadedFileName = data.filename;
+
+  renderFilePreview();
+});
+  
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
 function showOverlay(){ overlay.style.display = 'block'; overlay.setAttribute('aria-hidden','false'); }
@@ -1332,7 +1409,27 @@ function populateTempList(){
 
 /* close temp modal */
 closeTempBtn && closeTempBtn.addEventListener('click', ()=> { tempModal.style.display = 'none'; hideOverlay(); });
+function renderFilePreview(){
+  filePreviewContainer.innerHTML = "";
 
+  if(!uploadedFileName) return;
+
+  const pill = document.createElement("div");
+  pill.className = "file-pill";
+  pill.innerHTML = `
+    📄 ${uploadedFileName}
+    <button id="removeFileBtn">✕</button>
+  `;
+
+  filePreviewContainer.appendChild(pill);
+
+  document.getElementById("removeFileBtn").addEventListener("click", ()=>{
+    uploadedFileText = null;
+    uploadedFileName = null;
+    fileInput.value = "";
+    renderFilePreview();
+  });
+}
 /* ---------- Letters / Tips / Share functions (wired to side buttons) ---------- */
 function openLettersModal(){
   lettersModal.style.display = 'block';
@@ -1551,7 +1648,19 @@ async function sendMessage(){
     const sessionId = ensureSessionId();
     const headers = { "Accept":"application/json", "X-Session-Id": sessionId };
     if(token) headers["Authorization"] = "Bearer " + token;
-    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(text)}`, { method:"GET", headers });
+    let finalMessage = text;
+    if (uploadedFiles.length > 0) {
+      const combinedFiles = uploadedFiles.map(f =>
+        `File: ${f.name}\n${f.text}`
+      ).join("\n\n");
+      finalMessage = `
+      User message:
+      ${text}
+      Attached files:
+      ${combinedFiles}
+      `;
+}
+    const res = await fetch(`${API_BASE}/ask?q=${encodeURIComponent(finalMessage)}`, { method:"GET", headers });
     if(!res.ok) throw new Error('Server error');
     const data = await res.json();
     const answer = data?.answer || "No response.";
