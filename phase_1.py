@@ -298,10 +298,13 @@ class ModelRouter:
             # embeddings would use dedicated embedding adapters (phase_3 handles embeddings), fallback to OpenRouter/OpenAI
             names = ("openai","openrouter","mistral-direct")
             return [a for a in self.adapters if any(n in a.name for n in names)]
-              
-        if intent == "reason":
-            return [a for a in self.adapters if a.name in ("mistral-direct", "trinity-preview")] + self.adapters
 
+        if intent == "reason":
+            ordered = []
+            for name in ("mistral-direct", "trinity-preview"):
+                ordered += [a for a in self.adapters if a.name == name]
+            return ordered + self.adapters
+            
         if intent == "small":
             return [a for a in self.adapters if a.name in ("step-3.5-flash", "openrouter")] + self.adapters
 
