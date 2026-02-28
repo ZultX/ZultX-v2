@@ -689,6 +689,13 @@ body{
   }
 }
 
+.token-counter{
+  font-size:12px;
+  opacity:0.6;
+  text-align:right;
+  margin-top:4px;
+}
+  
 html.light .ai-pulse{
   background:#222;
 }
@@ -811,6 +818,27 @@ html.light .side .convo-item{
   background:#f3f3f3;
   color:#111;
 }
+.drop-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-weight:700;
+  color:white;
+  opacity:0;
+  pointer-events:none;
+  transition:0.2s ease;
+  z-index:999;
+}
+
+.drop-overlay.active{
+  opacity:1;
+  pointer-events:all;
+}
 @media (min-width:881px){
   #mobileMenuBtn{
     display:none !important;
@@ -893,7 +921,19 @@ html.light .side .convo-item{
   background: rgba(255,255,255,0.16);
   box-shadow: 0 8px 25px rgba(0,0,0,0.35);
 }
+.upload-spinner{
+  width:18px;
+  height:18px;
+  border:3px solid rgba(255,255,255,0.2);
+  border-top:3px solid #ffd54a;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  display:none;
+}
 
+@keyframes spin{
+  to{ transform:rotate(360deg); }
+}
 /* Send special accent */
 .send-square{
   background: linear-gradient(135deg, #f3d36b, #ffd54a);
@@ -1013,6 +1053,11 @@ html.light .side .convo-item{
         </div>
         <!-- INPUT -->
         <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
+        <div id="tokenCounter" class="token-counter">0 tokens</div>
+        <div id="dropOverlay" class="drop-overlay">
+          Drop txt files here
+        </div>
+        <div id="uploadSpinner" class="upload-spinner"></div>
         <input type="file" id="fileInput" accept=".txt" style="display:none;">
         <!-- SEND -->
         <button class="send-square" id="sendBtn">
@@ -1146,9 +1191,59 @@ attachBtn?.addEventListener("click", ()=>{
   
 let currentConversationId = null;
 let tempMode = false;
-let uploadedFileText = null;
+let uploadedFiles = [];
 let uploadedFileName = null;
+let uploadedFiles = [];
 
+fileInput.setAttribute("multiple", "true");
+
+fileInput.addEventListener("change", async () => {
+  const files = Array.from(fileInput.files);
+  if (!files.length) return;
+
+  for (const file of files) {
+    if (!file.name.toLowerCase().endsWith(".txt")) {
+      alert(`${file.name} is not a .txt file 💙`);
+      continue;
+    }
+
+    showUploadSpinner();
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/upload-txt", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    hideUploadSpinner();
+
+    if (!data.ok) {
+      alert(data.error);
+      continue;
+    }
+
+    const tokens = estimateTokens(data.text);
+
+    uploadedFiles.push({
+      name: data.filename,
+      size: file.size,
+      text: data.text,
+      tokens
+    });
+  }
+
+  renderFilePreview();
+  fileInput.value = "";
+});
+
+function estimateTokens(text){
+  return Math.ceil(text.length / 4);
+}
+  
 const fileInput = document.getElementById("fileInput");
 const attachBtn = document.getElementById("attachBtn");
 const filePreviewContainer = document.createElement("div");
@@ -1199,7 +1294,13 @@ function hideOverlay(){ overlay.style.display = 'none'; overlay.setAttribute('ar
 overlay.addEventListener('click', ()=> {
   closeAllSideModals();
 });
+function showUploadSpinner(){
+  document.getElementById("uploadSpinner").style.display="block";
+}
 
+function hideUploadSpinner(){
+  document.getElementById("uploadSpinner").style.display="none";
+}
 /* ---------- Theme logic (single source of truth) ---------- */
 function applyInitialTheme(){
   const saved = localStorage.getItem('zultx_theme');
@@ -1234,6 +1335,17 @@ mobileMenuBtn && mobileMenuBtn.addEventListener('click', ()=>{
   if(sidePanel.classList.contains('open')) showOverlay(); else hideOverlay();
 });
 
+function updateTokenDisplay(){
+  const inputTokens = estimateTokens(input.value);
+  const fileTokens = uploadedFiles.reduce((a,b)=>a+b.tokens,0);
+  const total = inputTokens + fileTokens;
+
+  document.getElementById("tokenCounter").textContent =
+    `${total} tokens total`;
+}
+
+input.addEventListener("input", updateTokenDisplay);
+  
 /* ---------- Temp button behavior (mobile-only) ---------- */
 function updateTempVisibility(){
   if(!tempChatBtn) return;
@@ -1412,24 +1524,30 @@ closeTempBtn && closeTempBtn.addEventListener('click', ()=> { tempModal.style.di
 function renderFilePreview(){
   filePreviewContainer.innerHTML = "";
 
-  if(!uploadedFileName) return;
+  uploadedFiles.forEach((file, index) => {
+    const sizeKB = (file.size / 1024).toFixed(1);
 
-  const pill = document.createElement("div");
-  pill.className = "file-pill";
-  pill.innerHTML = `
-    📄 ${uploadedFileName}
-    <button id="removeFileBtn">✕</button>
-  `;
+    const pill = document.createElement("div");
+    pill.className = "file-pill";
+    pill.innerHTML = `
+      📄 ${file.name} (${sizeKB} KB • ${file.tokens} tokens)
+      <button data-index="${index}">✕</button>
+    `;
 
-  filePreviewContainer.appendChild(pill);
-
-  document.getElementById("removeFileBtn").addEventListener("click", ()=>{
-    uploadedFileText = null;
-    uploadedFileName = null;
-    fileInput.value = "";
-    renderFilePreview();
+    filePreviewContainer.appendChild(pill);
   });
+
+  document.querySelectorAll(".file-pill button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const i = btn.getAttribute("data-index");
+      uploadedFiles.splice(i,1);
+      renderFilePreview();
+    });
+  });
+
+  updateTokenDisplay();
 }
+  
 /* ---------- Letters / Tips / Share functions (wired to side buttons) ---------- */
 function openLettersModal(){
   lettersModal.style.display = 'block';
@@ -1485,6 +1603,28 @@ function getAllHistory(){
   try{ return JSON.parse(localStorage.getItem('zultx_history') || '{}'); } catch(e){ return {}; }
 }
 function setAllHistory(obj){ localStorage.setItem('zultx_history', JSON.stringify(obj)); }
+
+const dropOverlay = document.getElementById("dropOverlay");
+
+window.addEventListener("dragover", e=>{
+  e.preventDefault();
+  dropOverlay.classList.add("active");
+});
+
+window.addEventListener("dragleave", e=>{
+  if(e.clientX === 0 && e.clientY === 0){
+    dropOverlay.classList.remove("active");
+  }
+});
+
+window.addEventListener("drop", async e=>{
+  e.preventDefault();
+  dropOverlay.classList.remove("active");
+
+  const files = Array.from(e.dataTransfer.files);
+  fileInput.files = e.dataTransfer.files;
+  fileInput.dispatchEvent(new Event("change"));
+});
   
 function refreshHistoryList(){
   const all = getAllHistory();
