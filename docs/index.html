@@ -1611,7 +1611,23 @@ html.dark .plus-panel * {
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+/* ============================= */
+/* FINAL MOBILE CLEAN PANEL FIX */
+/* ============================= */
 
+@media (max-width:880px){
+
+  /* REMOVE RIGHT DESCRIPTION 100% */
+  .mode-description{
+    display:none !important;
+  }
+
+  /* Single clean column */
+  .plus-panel{
+    grid-template-columns:1fr !important;
+  }
+
+}
 </style>
   
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
