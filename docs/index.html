@@ -1419,6 +1419,80 @@ html.dark .plus-panel * {
 .compose .mode-pill * {
   color: #ffffff !important;
 }
+/* ============================= */
+/* ===== MOBILE + PANEL FIX ==== */
+/* ============================= */
+
+@media (max-width: 768px){
+
+  /* Make panel tighter and centered */
+  .plus-panel{
+    left:12px !important;
+    right:12px !important;
+    bottom:100px !important;
+    padding:10px !important;
+    gap:10px !important;
+    border-radius:16px;
+  }
+
+  /* Equal 2-column layout */
+  .plus-panel{
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Compact mode buttons */
+  .plus-panel .mode-btn{
+    height:60px;                /* was 72px */
+    padding:8px 10px;
+    gap:10px;
+    border-radius:14px;
+  }
+
+  /* Icon sizing */
+  .plus-panel .mode-btn span{
+    font-size:18px;             /* smaller icon */
+  }
+
+  /* Label sizing */
+  .plus-panel .mode-btn div{
+    font-size:13px;
+    font-weight:700;
+  }
+
+  /* Remove heavy hover lift on mobile */
+  .plus-panel .mode-btn:hover{
+    transform:none;
+    box-shadow:none;
+  }
+
+  /* Mode pills tighter */
+  .plus-panel .modes{
+    margin-top:6px;
+    justify-content:center;
+    gap:6px;
+  }
+
+  .mode-pill{
+    padding:5px 9px;
+    font-size:11px;
+    border-radius:999px;
+  }
+
+  /* Make tool buttons smaller */
+  .tool-square,
+  .send-square{
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    font-size:16px;
+  }
+
+  /* Improve tap feel */
+  .plus-panel .mode-btn:active{
+    transform: scale(0.97);
+  }
+
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
