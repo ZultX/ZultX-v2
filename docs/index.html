@@ -1132,22 +1132,28 @@ html.light .msg.ai{
 }
 /* mode buttons become an even two-column grid */
 .plus-panel .mode-btn{
-  height:72px;
-  border-radius:12px;
   display:flex;
-  flex-direction:row;
   align-items:center;
-  justify-content:flex-start;
-  gap:12px;
+  gap:10px;
   padding:10px;
-  font-weight:800;
-  background: rgba(255,255,255,0.02);
-  cursor:pointer;
-  border:1px solid rgba(255,255,255,0.03);
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  border-radius:14px;
+  font-weight:700;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.06);
+  transition:.2s ease;
 }
-.plus-panel .mode-btn span{ font-size:20px; display:block; }
-.plus-panel .mode-btn div{ font-size:14px; color:var(--text); font-weight:700; text-transform:none; }
+
+.plus-panel .mode-btn span{
+  font-size:20px;
+  flex-shrink:0;
+}
+
+.plus-panel .mode-btn div{
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 
 /* subtle hover */
 .plus-panel .mode-btn:hover{
