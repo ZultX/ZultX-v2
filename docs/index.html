@@ -1087,7 +1087,7 @@ html.light .msg.ai{
   right:0;           /* align right */
   width:260px;
 
-  display:grid;
+  display: none;
   grid-template-columns:repeat(2,1fr);
   gap:12px;
 
@@ -1113,8 +1113,23 @@ html.light .msg.ai{
   opacity:1;
   transform:translateY(0) scale(1);
   pointer-events:auto;
-}
+  display: grid;
   
+}
+.plus-panel.active{
+  animation: slideUpPanel .25s ease forwards;
+}
+
+@keyframes slideUpPanel{
+  from{
+    transform: translateY(20px);
+    opacity:0;
+  }
+  to{
+    transform: translateY(0);
+    opacity:1;
+  }
+}
 /* mode buttons become an even two-column grid */
 .plus-panel .mode-btn{
   height:72px;
@@ -1189,6 +1204,18 @@ html.light .msg.ai{
 .scroll-down-btn:hover{
   transform: translateY(-3px);
 }
+@media (max-width:880px){
+
+  .plus-panel .mode-description{
+    display:none !important;
+  }
+
+  .plus-panel{
+    grid-template-columns: 1fr !important;
+  }
+
+}
+  
 /* bottom sheet (half-screen) - visually light and clean */
 .bottom-sheet{
   position:fixed;
