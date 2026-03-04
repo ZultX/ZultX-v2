@@ -1080,44 +1080,70 @@ html.light .msg.ai{
 /* ============================= */
 /* ===== PREMIUM + PANEL ======= */
 /* ============================= */
+@media (min-width:881px){
 
-.plus-panel{
-  position:absolute; /* anchor to compose */
-  bottom:64px;       /* above + button */
-  right:0;           /* align right */
-  width:260px;
+  .plus-panel{
+    position:fixed;
+    left:calc(var(--side-w) + 20px);
+    right:20px;
+    bottom:110px;
+    max-width:720px;
+    margin:auto;
 
-  display: none;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
+    background:#000;
+    border-radius:18px;
+    padding:18px;
 
-  padding:14px;
-  border-radius:18px;
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
 
-  background:rgba(12,12,14,0.95);
-  backdrop-filter:blur(22px);
+    opacity:0;
+    transform:translateY(10px);
+    pointer-events:none;
+    transition:.25s ease;
+    z-index:20000;
+  }
 
-  border:1px solid rgba(255,255,255,0.06);
-
-  transform-origin:bottom right;
-  transform:translateY(8px) scale(.96);
-  opacity:0;
-  pointer-events:none;
-
-  transition:
-    opacity .18s ease,
-    transform .22s cubic-bezier(.2,.9,.25,1);
+  .plus-panel.active{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
 }
+@media (max-width:880px){
 
-.plus-panel.active{
-  opacity:1;
-  transform:translateY(0) scale(1);
-  pointer-events:auto;
-  display: grid;
-  
-}
-.plus-panel.active{
-  animation: slideUpPanel .25s ease forwards;
+  .plus-panel{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+
+    background:#0f0f12;
+    border-top-left-radius:24px;
+    border-top-right-radius:24px;
+
+    padding:20px;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom));
+
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.2,.9,.25,1);
+
+    z-index:20000;
+  }
+
+  .plus-panel.active{
+    transform:translateY(0);
+  }
+
+  /* REMOVE DESCRIPTION ON MOBILE */
+  .mode-description{
+    display:none !important;
+  }
 }
 
 @keyframes slideUpPanel{
@@ -1223,28 +1249,6 @@ html.light .msg.ai{
 }
   
 /* bottom sheet (half-screen) - visually light and clean */
-.bottom-sheet{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  height:0;
-  background: #000 !important;
-  backdrop-filter: blur(20px);
-  border-top-left-radius:20px;
-  border-top-right-radius:20px;
-  box-shadow: 0 -8px 25px rgba(0,0,0,0.08);
-  transition: height .28s cubic-bezier(.2,.9,.25,1);
-  overflow:hidden;
-  z-index:16000;
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-  
-.bottom-sheet.open{ height:46vh; padding-bottom: env(safe-area-inset-bottom); }
-
 /* thumbnails */
 .image-thumb{
   width:78px;
@@ -1258,14 +1262,6 @@ html.light .msg.ai{
   
 /* compact upload status line */
 .upload-status{ font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center; }
-
-/* HARD REMOVE ANY DARK BOTTOM LAYER */
-.bottom-sheet,
-#z-overlay{
-  display:none !important;
-  background:transparent !important;
-  box-shadow:none !important;
-}
 
 /* ===== PINK ACTIVE STATE FOR + BUTTON ===== */
 
@@ -1613,14 +1609,37 @@ html.dark .plus-panel * {
 
   }
 
+.plus-panel {
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  border: 1px solid rgba(255,255,255,0.06);
+}
 
+.mode-pill {
+  transition: all .18s ease;
+}
+
+.mode-pill:hover {
+  transform: translateY(-2px);
+}
+
+.mode-pill.active {
+  background: linear-gradient(135deg,#ffd95e,#ffb400);
+  color:#000;
+}
+  
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
 /* ============================= */
 /* FINAL MOBILE CLEAN PANEL FIX */
 /* ============================= */
-
+@media (max-width: 880px){
+  .plus-panel{
+    grid-template-columns: 1fr !important;
+  }
+}
+  
 @media (max-width:880px){
 
   /* REMOVE RIGHT DESCRIPTION 100% */
@@ -1810,7 +1829,7 @@ html.dark .plus-panel * {
 <script>
 /* ---------- Config & DOM refs ---------- */
 const API_BASE = "https://zultx.onrender.com";
-const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isMobile = window.matchMedia("(max-width: 880px)").matches;
 
 const overlay = document.getElementById('z-overlay');
 const chatArea = document.getElementById("chatArea");
@@ -1949,13 +1968,7 @@ function hideOverlay(){ overlay.style.display = 'none'; overlay.setAttribute('ar
 overlay.addEventListener('click', ()=> {
   closeAllSideModals();
 });
-function showUploadSpinner(){
-  document.getElementById("uploadSpinner").style.display="block";
-}
 
-function hideUploadSpinner(){
-  document.getElementById("uploadSpinner").style.display="none";
-}
 /* ---------- Theme logic (single source of truth) ---------- */
 function applyInitialTheme(){
   const saved = localStorage.getItem('zultx_theme');
