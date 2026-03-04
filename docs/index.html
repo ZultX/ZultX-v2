@@ -88,7 +88,7 @@ header{
   border-bottom:1px solid rgba(255,255,255,0.06);
   z-index:9999;
 }
-  
+
 .app{
   display:flex;
   min-height:100vh;
@@ -224,7 +224,7 @@ html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(
   justify-content:center;
   z-index: 80;
 }
-  
+
 .compose-inner{
   display:flex;
   align-items:center;
@@ -409,7 +409,7 @@ html.dark .msg.ai pre{
   from{ opacity:0; transform:translateY(-4px);}
   to{ opacity:1; transform:translateY(0);}
 }
-  
+
 @media (max-width:600px){
   .modal{
     left:4%;
@@ -485,7 +485,7 @@ html.dark .msg.ai p code {
   margin:6px 0;
 }
 
-  
+
 /* Copy button */
 .copy-btn {
   position: absolute;
@@ -515,7 +515,7 @@ html.dark .msg.ai p code {
 .premium-modal.active{
   display:flex;
 }
-  
+
 .premium-card {
   width:100%;
   max-width:920px;
@@ -566,7 +566,7 @@ body{
   color: #111;
   font-weight:800;
   }
-  
+
 .suggest-card{
   font-size:16px;
   font-weight:500;
@@ -698,7 +698,7 @@ body{
   text-align:right;
   margin-top:4px;
 }
-  
+
 html.light .ai-pulse{
   background:#222;
 }
@@ -719,7 +719,7 @@ html.light .ai-pulse{
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
-  
+
 @media (max-width:768px){
 
   header{
@@ -785,7 +785,7 @@ html.light .ai-pulse{
   backdrop-filter:blur(6px);
   border:1px solid rgba(255,215,0,0.08);
   }
-  
+
 .top-tip,
 .mobileMenuBtn,
 #tempChatBtn{
@@ -812,7 +812,7 @@ html.light .side{
   color:#111111;
 }
 
-  
+
 html.light .side .small-muted{
   color:#555;
 }
@@ -1077,44 +1077,58 @@ html.light .msg.ai{
   opacity: 0.75;
   transform: scale(0.99);
 }  
-/* ============================= */
-/* ===== PREMIUM + PANEL ======= */
-/* ============================= */
-
-@keyframes slideUpPanel{
-  from{
-    transform: translateY(20px);
-    opacity:0;
-  }
-  to{
-    transform: translateY(0);
-    opacity:1;
-  }
+/* ===== Plus floating panel & bottom sheet (clean, grid layout) ===== */
+.plus-panel{
+  position: fixed;
+  /* sit centered horizontally between side and right edge */
+  left: calc(var(--side-w) + 18px);
+  right: 18px;
+  bottom: 92px; /* above compose area */
+  background: #000 !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(18px);
+  border-radius: 14px;
+  padding: 12px;
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  box-shadow: none; /* remove heavy black shadow for a cleaner look */
+  transform-origin: bottom center;
+  opacity:0;
+  pointer-events:none;
+  transform: translateY(8px) scale(.98);
+  transition: all .18s cubic-bezier(.2,.9,.25,1);
+  z-index:12000;
+  border:1px solid rgba(255,255,255,0.04);
+  flex-wrap:wrap; /* allow buttons to wrap into rows */
+  max-width: calc(100% - var(--side-w) - 36px);
 }
+.plus-panel.active{
+  opacity:1;
+  pointer-events:all;
+  transform: translateY(0) scale(1);
+}
+
 /* mode buttons become an even two-column grid */
 .plus-panel .mode-btn{
+  height:72px;
+  border-radius:12px;
   display:flex;
+  flex-direction:row;
   align-items:center;
-  gap:10px;
+  justify-content:flex-start;
+  gap:12px;
   padding:10px;
-  border-radius:14px;
-  font-weight:700;
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.06);
-  transition:.2s ease;
+  font-weight:800;
+  background: rgba(255,255,255,0.02);
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,0.03);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
 }
-
-.plus-panel .mode-btn span{
-  font-size:20px;
-  flex-shrink:0;
-}
-
-.plus-panel .mode-btn div{
-  font-size:14px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
+.plus-panel .mode-btn span{ font-size:20px; display:block; }
+.plus-panel .mode-btn div{ font-size:14px; color:var(--text); font-weight:700; text-transform:none; }
 
 /* subtle hover */
 .plus-panel .mode-btn:hover{
@@ -1146,9 +1160,54 @@ html.light .msg.ai{
   color:#000;
   box-shadow: 0 10px 30px rgba(255,215,0,0.12);
 }
+/* ===== Scroll Down Button ===== */
 
-  
+.scroll-down-btn{
+  position: absolute;
+  right: 20px;
+  bottom: 90px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:none;
+  background: linear-gradient(135deg,#f3d36b,#ffd54a);
+  color:#000;
+  font-size:18px;
+  cursor:pointer;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 8px 20px rgba(0,0,0,0.25);
+  z-index:5000;
+  transition: transform .2s ease;
+}
+
+.scroll-down-btn:hover{
+  transform: translateY(-3px);
+}
 /* bottom sheet (half-screen) - visually light and clean */
+.bottom-sheet{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:0;
+  background: #000 !important;
+  backdrop-filter: blur(20px);
+  border-top-left-radius:20px;
+  border-top-right-radius:20px;
+  box-shadow: 0 -8px 25px rgba(0,0,0,0.08);
+  transition: height .28s cubic-bezier(.2,.9,.25,1);
+  overflow:hidden;
+  z-index:16000;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.bottom-sheet.open{ height:46vh; padding-bottom: env(safe-area-inset-bottom); }
+
 /* thumbnails */
 .image-thumb{
   width:78px;
@@ -1159,88 +1218,39 @@ html.light .msg.ai{
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
 .thumb-row{ display:flex; gap:8px; align-items:center; }
-  
+
 /* compact upload status line */
 .upload-status{ font-size:13px;color:var(--muted); display:flex; gap:10px; align-items:center; }
 
+/* HARD REMOVE ANY DARK BOTTOM LAYER */
+.bottom-sheet,
+#z-overlay{
+  display:none !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
 /* ===== PINK ACTIVE STATE FOR + BUTTON ===== */
-@media (min-width: 881px){
 
-  .plus-panel{
-    position: fixed;
-    left: calc(var(--side-w) + 20px);
-    right: 20px;
-    bottom: 110px;
-    max-width: 720px;
-    margin: 0 auto;
-
-    background: #000;
-    border-radius: 16px;
-    padding: 16px;
-
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-
-    opacity: 0;
-    transform: translateY(10px);
-    pointer-events: none;
-    transition: all .2s ease;
-  }
-
-  .plus-panel.active{
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-}
-
-@media (max-width: 880px){
-
-  .plus-panel{
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-
-    background: #0f0f12;
-    border-top-left-radius: 22px;
-    border-top-right-radius: 22px;
-
-    padding: 20px;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
-
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-
-    transform: translateY(100%);
-    pointer-events: none;
-    transition: transform .28s cubic-bezier(.2,.9,.25,1);
-  }
-
-  .plus-panel.active{
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  .mode-description{
-    display:none;
-  }
-}
 
 .plus-active-bg {
-  background: rgba(255, 105, 180, 0.12);
+  background: rgba(255, 105, 180, 0.12) !important;
   backdrop-filter: blur(8px);
   transition: background 0.25s ease;
 }
 html.dark .plus-active-bg {
-  background: rgba(255, 105, 180, 0.12);
+  background: rgba(255, 105, 180, 0.12) !important;
+}
+
+/* FORCE PINK WHEN + IS ACTIVE */
+.modern-compose{
+  background: #ffffff !important;
+  border-top: 1px solid rgba(0,0,0,0.06);
 }
 
 /* Dark mode version */
 html.dark .modern-compose{
-  background: #1a1a1a;
+  background: #1a1a1a !important;
   border-top: 1px solid rgba(255,255,255,0.08);
 }
 .scroll-down-btn{
@@ -1250,11 +1260,6 @@ html.dark .modern-compose{
   display: none;
   z-index: 9999;
 }
-/* ===== Scroll Down Button ===== */
-.scroll-down-btn:hover{
-  transform: translateY(-3px);
-}
-  
 html, body {
   height: 100%;
 }
@@ -1277,14 +1282,17 @@ html, body {
 /* Force readable text in dark mode */
 html.dark .plus-panel,
 html.dark .plus-panel * {
-  color: #ffffff;
+  color: #ffffff !important;
+}
+.plus-panel{
+  color:#fff;
 }
 
 .plus-panel .mode-btn div,
 .plus-panel .mode-btn span{
   color:inherit;
 }
-  
+
 /* ============================= */
 /* ===== MOBILE HARD FIX ======= */
 /* ============================= */
@@ -1391,10 +1399,21 @@ html.dark .plus-panel * {
   }
 
 }
+.plus-panel .mode-btn div,
+.plus-panel .mode-btn span {
+  color: #ffffff !important;
+}
 
 .mode-btn,
 .mode-btn * {
   color: #ffffff !important;
+}
+@media (max-width:768px){
+  .plus-panel{
+    left:12px;
+    right:12px;
+    max-width:none;
+  }
 }
 .compose .mode-pill,
 .compose .mode-pill * {
@@ -1405,6 +1424,22 @@ html.dark .plus-panel * {
 /* ============================= */
 
 @media (max-width: 768px){
+
+  /* Make panel tighter and centered */
+  .plus-panel{
+    left:12px !important;
+    right:12px !important;
+    bottom:100px !important;
+    padding:10px !important;
+    gap:10px !important;
+    border-radius:16px;
+  }
+
+  /* Equal 2-column layout */
+  .plus-panel{
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   /* Compact mode buttons */
   .plus-panel .mode-btn{
     height:60px;                /* was 72px */
@@ -1458,26 +1493,12 @@ html.dark .plus-panel * {
   }
 
 }
-
-
-.mode-pill {
-  transition: all .18s ease;
-}
-
-.mode-pill:hover {
-  transform: translateY(-2px);
-}
-
-.mode-pill.active {
-  background: linear-gradient(135deg,#ffd95e,#ffb400);
-  color:#000;
-}
-  
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+
 </style>
-  
+
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
   marked.setOptions({
@@ -1487,7 +1508,7 @@ html.dark .plus-panel * {
     smartypants: true
   });
 </script>
-  
+
 <link rel="stylesheet"
  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 
@@ -1652,7 +1673,7 @@ html.dark .plus-panel * {
 <script>
 /* ---------- Config & DOM refs ---------- */
 const API_BASE = "https://zultx.onrender.com";
-const isMobile = window.matchMedia("(max-width: 880px)").matches;
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const overlay = document.getElementById('z-overlay');
 const chatArea = document.getElementById("chatArea");
@@ -1698,14 +1719,14 @@ const p_msg = document.getElementById("p_msg");
 const plusBtn = document.getElementById("plusBtn");
 const attachBtn = document.getElementById("attachBtn");
 const fileInput = document.getElementById("fileInput");
-  
+
 
 let currentConversationId = null;
 let tempMode = false;
 let uploadedFileName = null;
 let uploadedFiles = [];
 let premiumMode = "login";
-  
+
 fileInput.setAttribute("multiple", "true");
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files);
@@ -1771,7 +1792,7 @@ fileInput.addEventListener("change", async () => {
 function estimateTokens(text){
   return Math.ceil(text.length / 4);
 }
-  
+
 
 const filePreviewContainer = document.createElement("div");
 filePreviewContainer.className = "file-preview-container";
@@ -1781,7 +1802,7 @@ attachBtn.addEventListener("click", () => {
   fileInput.click();
 });
 
-  
+
 /* ---------- Safe helpers ---------- */
 function $id(id){ return document.getElementById(id); }
 function showOverlay(){ overlay.style.display = 'block'; overlay.setAttribute('aria-hidden','false'); }
@@ -1791,7 +1812,13 @@ function hideOverlay(){ overlay.style.display = 'none'; overlay.setAttribute('ar
 overlay.addEventListener('click', ()=> {
   closeAllSideModals();
 });
+function showUploadSpinner(){
+  document.getElementById("uploadSpinner").style.display="block";
+}
 
+function hideUploadSpinner(){
+  document.getElementById("uploadSpinner").style.display="none";
+}
 /* ---------- Theme logic (single source of truth) ---------- */
 function applyInitialTheme(){
   const saved = localStorage.getItem('zultx_theme');
@@ -1841,7 +1868,7 @@ function estimateImageTokens(file){
   // simple token estimate for images
   return Math.ceil(file.size / 1000);
 }
-  
+
 /* ---------- Temp button behavior (mobile-only) ---------- */
 function updateTempVisibility(){
   if(!tempChatBtn) return;
@@ -2056,7 +2083,7 @@ function renderFilePreview(){
 
   updateTokenDisplay();
 }
-  
+
 /* ---------- Letters / Tips / Share functions (wired to side buttons) ---------- */
 function openLettersModal(){
   lettersModal.style.display = 'block';
@@ -2134,7 +2161,7 @@ window.addEventListener("drop", async e=>{
   fileInput.files = e.dataTransfer.files;
   fileInput.dispatchEvent(new Event("change"));
 });
-  
+
 function refreshHistoryList(){
   const all = getAllHistory();
   const keys = Object.keys(all).sort((a,b)=> all[b].created - all[a].created);
@@ -2283,7 +2310,7 @@ function showUploadSpinner(){
 function hideUploadSpinner(){
   document.getElementById('uploadSpinner').style.display = 'none';
 }
-  
+
 /* ---------- Streaming sendMessage() ---------- */
 async function sendMessage(){
   const text = input.value.trim();
@@ -2328,7 +2355,7 @@ async function sendMessage(){
     aiDiv.textContent = "⚠️ Connection error.";
   }finally{ renderFilePreview(); updateTokenDisplay(); sendBtn.disabled = false; updateTempVisibility(); }
 }
-  
+
 /* ---------- Open / New conversation ---------- */
 startBtn && startBtn.addEventListener('click', ()=> {
   tempMode = false;
@@ -2481,7 +2508,7 @@ function loggedIn(){ return !!getToken(); }
     } else openPremium('login');
   });
 })();
-  
+
 function refreshAccountUI(){
   const btn = document.getElementById('accBtn');
   const welcome = document.getElementById('accWelcome');
@@ -2503,7 +2530,7 @@ function refreshAccountUI(){
 
     welcome.textContent = 'Not signed in';
     if(sideName) sideName.textContent = 'User';
-    
+
   }
 }
 
@@ -2708,10 +2735,10 @@ function refreshAccountUI(){
   window.populateThumbs = populateThumbs;
 
 })();
-  
+
 refreshAccountUI();
 loadSuggestions();
-  
+
 /* ---------- small helpers: click outside chat area closes side on mobile (improve UX) ---------- */
 chatArea.addEventListener("scroll", () => {
   const isNearBottom =
@@ -2742,7 +2769,7 @@ scrollDownBtn.addEventListener("click", ()=>{
   });
 });
 
-  
+
 document.addEventListener('click', (e)=> {
   // if side is open and click outside sidePanel on mobile -> close
   if(sidePanel.classList.contains('open') && isMobile){
@@ -2755,6 +2782,7 @@ document.addEventListener('click', (e)=> {
 
 /* ---------- bootstrap done ---------- */
 console.log('ZultX UI loaded — tidy & robust.');
+console.log('WELCOME TO ZULTX UX!');
 </script>
 </body>
 </html>
