@@ -2298,6 +2298,7 @@ function loadConversation(convoId){
   return all[convoId] || null;
 }
 function localSaveInit(convoId){
+  localStorage.setItem("zultx_last_convo", convoId); // ADD THIS
   const all = getAllHistory();
   if(!all[convoId]) all[convoId] = { id: convoId, created: Date.now(), messages: [] };
   setAllHistory(all);
@@ -2381,6 +2382,7 @@ newChatBtn && newChatBtn.addEventListener('click', ()=> {
 });
 function openConversation(convoId){
   tempMode = false;
+  localStorage.setItem("zultx_last_convo", convoId);
   currentConversationId = convoId;
   const convo = loadConversation(convoId);
   chatArea.innerHTML = '';
@@ -2417,7 +2419,8 @@ input && input.addEventListener('keydown', function(e) {
 input && input.addEventListener("input", ()=> { input.style.height = "auto"; const maxHeight = 100; input.style.height = Math.min(input.scrollHeight, maxHeight) + "px"; });
 
 /* init: ensure conversation */
-if(!currentConversationId){ currentConversationId = makeConvoId(); localSaveInit(currentConversationId); }
+currentConversationId = localStorage.getItem("zultx_last_convo");
+if(currentConversationId) openConversation(currentConversationId);
 refreshHistoryList();
 centerScreen.style.display = 'flex';
 chatArea.style.display = 'none';
