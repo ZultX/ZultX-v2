@@ -1649,6 +1649,30 @@ html.light .copy-btn:hover{
 html.light .msg.ai pre::-webkit-scrollbar-thumb{
   background:rgba(0,0,0,0.2);
 }
+  
+.run-btn{
+  position:absolute;
+  top:10px;
+  right:70px;
+
+  font-size:12px;
+  font-weight:700;
+
+  padding:5px 10px;
+  border-radius:8px;
+
+  border:1px solid rgba(255,255,255,0.08);
+  background:#22c55e;
+  color:white;
+
+  cursor:pointer;
+
+  transition:transform .12s ease;
+}
+
+.run-btn:hover{
+  transform:translateY(-1px);
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -2003,6 +2027,43 @@ mobileMenuBtn && mobileMenuBtn.addEventListener('click', ()=>{
   sidePanel.classList.toggle('open');
   if(sidePanel.classList.contains('open')) showOverlay(); else hideOverlay();
 });
+  
+function runCodeSandbox(code, lang){
+
+  const sandbox = window.open("", "_blank");
+
+  if(lang === "html"){
+
+    sandbox.document.write(code);
+
+  }else if(lang === "javascript" || lang === "js"){
+
+    sandbox.document.write(`
+      <html>
+      <body style="font-family:monospace;padding:20px">
+      <h3>JS Output</h3>
+      <pre id="out"></pre>
+
+      <script>
+      const log = console.log;
+      console.log = function(...args){
+        document.getElementById("out").textContent += args.join(" ") + "\\n";
+        log.apply(console,args);
+      };
+
+      try{
+        ${code}
+      }catch(e){
+        document.getElementById("out").textContent = e;
+      }
+      </script>
+      </body>
+      </html>
+    `);
+
+  }
+
+}
 
 function updateTokenDisplay(){
   const inputTokens = estimateTokens(input.value);
@@ -2417,21 +2478,46 @@ function fakeStream(element, fullText, speed = 10) {
   }
   type();
 }
-
 function enhanceCodeBlocks(container){
   container.querySelectorAll('pre code').forEach(block => {
+
     const pre = block.parentElement;
     if(pre.classList.contains('code-enhanced')) return;
+
     pre.classList.add('code-enhanced');
+
     const className = block.className || '';
     const match = className.match(/language-(\w+)/);
-    pre.setAttribute('data-lang', match ? match[1].toUpperCase() : 'CODE');
-    const btn = document.createElement('button');
-    btn.textContent = 'Copy';
-    btn.className = 'copy-btn';
-    btn.onclick = () => { navigator.clipboard.writeText(block.innerText); btn.textContent = 'Copied'; setTimeout(()=>btn.textContent='Copy',1500); };
-    pre.style.position = 'relative';
-    pre.appendChild(btn);
+    const lang = match ? match[1].toLowerCase() : 'code';
+
+    pre.setAttribute('data-lang', lang.toUpperCase());
+
+    /* COPY BUTTON */
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy';
+    copyBtn.className = 'copy-btn';
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(block.innerText);
+      copyBtn.textContent = 'Copied';
+      setTimeout(()=>copyBtn.textContent='Copy',1500);
+    };
+
+    pre.appendChild(copyBtn);
+
+    /* RUN BUTTON (only for JS / HTML) */
+
+    if(lang === "javascript" || lang === "js" || lang === "html"){
+
+      const runBtn = document.createElement("button");
+      runBtn.textContent = "Run";
+      runBtn.className = "run-btn";
+
+      runBtn.onclick = () => runCodeSandbox(block.innerText, lang);
+
+      pre.appendChild(runBtn);
+    }
+
   });
 }
 
