@@ -1673,6 +1673,14 @@ html.light .msg.ai pre::-webkit-scrollbar-thumb{
 .run-btn:hover{
   transform:translateY(-1px);
 }
+.code-output{
+  width:100%;
+  height:180px;
+  margin-top:10px;
+  border-radius:8px;
+  border:1px solid #333;
+  background:#111;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -2027,25 +2035,26 @@ mobileMenuBtn && mobileMenuBtn.addEventListener('click', ()=>{
   sidePanel.classList.toggle('open');
   if(sidePanel.classList.contains('open')) showOverlay(); else hideOverlay();
 });
+function runCodeSandbox(code, lang, iframe){
 
-function runCodeSandbox(code, lang){
-
-  const sandbox = window.open("", "_blank");
+  iframe.style.display = "block";
 
   if(lang === "html"){
 
-    sandbox.document.write(code);
+    iframe.srcdoc = code;
 
-  }else if(lang === "javascript" || lang === "js"){
+  }
 
-    sandbox.document.write(`
+  if(lang === "javascript" || lang === "js"){
+
+    iframe.srcdoc = `
       <html>
-      <body style="font-family:monospace;padding:20px">
-      <h3>JS Output</h3>
+      <body style="font-family:monospace;padding:10px">
       <pre id="out"></pre>
 
       <script>
       const log = console.log;
+
       console.log = function(...args){
         document.getElementById("out").textContent += args.join(" ") + "\\n";
         log.apply(console,args);
@@ -2059,9 +2068,8 @@ function runCodeSandbox(code, lang){
       <\/script>
 
       <\/body>
-      <\/html>
-    `);
-
+      <\html>
+    `;
   }
 }
 
@@ -2489,7 +2497,7 @@ function enhanceCodeBlocks(container){
     const className = block.className || '';
     const match = className.match(/language-(\w+)/);
     const lang = match ? match[1].toLowerCase() : 'code';
-
+   
     pre.setAttribute('data-lang', lang.toUpperCase());
 
     /* COPY BUTTON */
@@ -2512,10 +2520,16 @@ function enhanceCodeBlocks(container){
       const runBtn = document.createElement("button");
       runBtn.textContent = "Run";
       runBtn.className = "run-btn";
+    
+      const iframe = document.createElement("iframe");
+      iframe.className = "code-output";
+      iframe.style.display = "none";
 
-      runBtn.onclick = () => runCodeSandbox(block.innerText, lang);
+      runBtn.onclick = () => runCodeSandbox(block.innerText, lang, iframe);
 
       pre.appendChild(runBtn);
+      pre.appendChild(iframe);
+      
     }
 
   });
