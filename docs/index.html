@@ -1674,13 +1674,32 @@ html.light .msg.ai pre::-webkit-scrollbar-thumb{
   transform:translateY(-1px);
 }
 .code-output{
+
   width:100%;
-  height:180px;
-  margin-top:10px;
-  border-radius:8px;
-  border:1px solid #333;
-  background:#111;
+  height:200px;
+
+  margin-top:12px;
+
+  border-radius:18px;
+
+  border:1px solid rgba(255,105,180,0.25);
+
+  background:linear-gradient(
+    180deg,
+    #fffafa,
+    #ffe4ec
+  );
+
+  backdrop-filter: blur(20px);
+
+  box-shadow:
+    0 -8px 25px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+
+  overflow:auto;
+
 }
+
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -2041,34 +2060,98 @@ function runCodeSandbox(code, lang, iframe){
 
   if(lang === "html"){
 
-    iframe.srcdoc = code;
+    iframe.srcdoc = `
+    <html>
+    <head>
+    <style>
+
+    body{
+      margin:0;
+      padding:14px;
+      font-family:monospace;
+
+      background:linear-gradient(
+        180deg,
+        #fffafa,
+        #ffe4ec
+      );
+
+      color:#111;
+    }
+
+    </style>
+    </head>
+    <body>
+
+    ${code}
+
+    </body>
+    </html>
+    `;
 
   }
 
   if(lang === "javascript" || lang === "js"){
 
     iframe.srcdoc = `
-      <html>
-      <body style="font-family:monospace;padding:10px">
-      <pre id="out"></pre>
+    <html>
+    <head>
 
-      <script>
-      const log = console.log;
+    <style>
 
-      console.log = function(...args){
-        document.getElementById("out").textContent += args.join(" ") + "\\n";
-        log.apply(console,args);
-      };
+    body{
+      margin:0;
+      padding:14px;
+      font-family:monospace;
+      font-size:14px;
 
-      try{
-        ${code}
-      }catch(e){
-        document.getElementById("out").textContent = e;
-      }
-      <\/script>
+      background:linear-gradient(
+        180deg,
+        #fffafa,
+        #ffe4ec
+      );
 
-      <\/body>
-      <\html>
+      color:#111;
+    }
+
+    #out{
+      white-space:pre-wrap;
+    }
+
+    </style>
+
+    </head>
+
+    <body>
+
+    <pre id="out"></pre>
+
+    <script>
+
+    const out = document.getElementById("out");
+
+    const log = console.log;
+
+    console.log = function(...args){
+      const line = args.join(" ");
+      out.innerHTML += "<div>"+line+"</div>";
+      log.apply(console,args);
+    };
+
+    window.onerror = function(msg){
+      out.textContent += "Error: " + msg;
+    };
+
+    try{
+      ${code}
+    }catch(e){
+      out.textContent += e;
+    }
+
+    <\/script>
+
+    <\/body>
+    <\/html>
     `;
   }
 }
