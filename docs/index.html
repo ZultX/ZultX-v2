@@ -2599,17 +2599,19 @@ function enhanceCodeBlocks(container){
       iframe.style.display = "none";
 
       runBtn.onclick = () => {
-        // if output already visible → RESET
-        if (iframe.style.display === "block") {
-          iframe.srcdoc = "";        // clear output
-          iframe.style.display = "none";
-          runBtn.textContent = "Run";
-          return;
-        }
-        // otherwise RUN
-        iframe.style.display = "block";
-        runBtn.textContent = "Reset";
-        runBtn.onclick = () => runCodeSandbox(block.innerText, lang, iframe);
+       if (iframe.style.display === "block") {
+        // RESET
+        iframe.srcdoc = "";
+        iframe.style.display = "none";
+        runBtn.textContent = "Run";
+       } 
+       else {
+         // RUN
+         iframe.style.display = "block";
+         runBtn.textContent = "Reset";
+         runCodeSandbox(block.innerText, lang, iframe);
+      }
+
       };
      
       pre.appendChild(runBtn);
