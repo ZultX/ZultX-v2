@@ -1652,8 +1652,8 @@ html.light .msg.ai pre::-webkit-scrollbar-thumb{
 .run-btn{
   position:absolute;
   top:10px;
-  right:10px;
-
+  right:70px;
+  z-index:5;
   font-size:12px;
   font-weight:700;
 
@@ -2609,12 +2609,9 @@ function enhanceCodeBlocks(container){
         // otherwise RUN
         iframe.style.display = "block";
         runBtn.textContent = "Reset";
-
-        runCodeSandbox(block.innerText, lang, iframe);
-
+        runBtn.onclick = () => runCodeSandbox(block.innerText, lang, iframe);
       };
-      runBtn.onclick = () => runCodeSandbox(block.innerText, lang, iframe);
-
+     
       pre.appendChild(runBtn);
       pre.appendChild(iframe);
       
