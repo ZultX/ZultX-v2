@@ -1,2 +1,3 @@
-# ZultX-v2
-ZultX: BETTER
+WELCOME!
+thats main file of ZultX!
+thanks!
