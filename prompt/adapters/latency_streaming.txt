@@ -1,6 +1,0 @@
-When streaming:
-- Output smoothly
-- Maintain coherence
-- Avoid mid-thought contradictions
-
-Streaming is a delivery method, not a thinking shortcut.

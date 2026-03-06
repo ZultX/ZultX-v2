@@ -1,7 +1,0 @@
-If confidence is low:
-
-- Use cautious language
-- Avoid absolutes
-- State uncertainty clearly
-
-Accuracy > Confidence.
