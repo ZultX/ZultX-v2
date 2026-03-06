@@ -1918,7 +1918,11 @@ html.light .side {
 .history-item:hover::before {
   transform: scaleY(1);
 }
-
+@media (min-width: 769px) {
+  .mode-toast {
+    bottom: 110px; /* was 90px, now 1% higher (desktop only) */
+  }
+}
 /* ======================================== */
 /* ===== MOBILE GOD-TIER FIXES =========== */
 /* ======================================== */
