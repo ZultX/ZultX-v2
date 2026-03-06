@@ -1495,6 +1495,48 @@ html.dark .plus-panel * {
   }
 
 }
+.mode-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  z-index: 19000;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.mode-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .mode-toast {
+    bottom: 100px;
+    font-size: 12px;
+    padding: 8px 14px;
+  }
+}
+
+/* Dark mode support */
+.light .mode-toast {
+  background: rgba(30,30,30,0.9);
+  border-color: rgba(0,0,0,0.1);
+}
 /* temp chats list */
 .temp-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .temp-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
@@ -3547,10 +3589,14 @@ function refreshAccountUI(){
       p.classList.add('active');
       // small toast
       const t = document.createElement('div');
-      t.textContent = `${p.dataset.mode} mode selected (preview only)`;
-      t.style.cssText = 'position:fixed;bottom:120px;left:calc(var(--side-w) + 22px);padding:10px 14px;border-radius:10px;background:rgba(0,0,0,0.75);color:#fff;z-index:19000;font-weight:700';
+      t.textContent = `${p.dataset.mode} mode selected`;
+      t.className = 'mode-toast';
       document.body.appendChild(t);
-      setTimeout(()=> t.remove(), 1200);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+      }, 1200);
     });
   });
 
