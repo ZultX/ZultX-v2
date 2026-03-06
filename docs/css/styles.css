@@ -662,9 +662,11 @@ body{
     position:sticky;
     bottom:0;
     background:var(--bg);
-    padding:10px;
+    padding:8px;
   }
-
+  .compose-inner{
+    border-radius:16px;
+  }
   .chat-wrap{
     padding-bottom:90px;
   }
