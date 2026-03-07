@@ -3,7 +3,7 @@ function renderFilePreview(){
 
   function shortName(name){
     const clean = name.replace(/\.[^/.]+$/, ""); // remove extension
-    return clean.slice(0,5); // max 5 chars
+    return clean.slice(0,25); // max 25 chars
   }
   uploadedFiles.forEach((file, index) => {
     const sizeKB = (file.size / 1024).toFixed(1);
