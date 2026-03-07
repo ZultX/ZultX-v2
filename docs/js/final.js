@@ -1,6 +1,10 @@
 function renderFilePreview(){
   filePreviewContainer.innerHTML = "";
 
+  function shortName(name){
+    const clean = name.replace(/\.[^/.]+$/, ""); // remove extension
+    return clean.slice(0,5); // max 5 chars
+  }
   uploadedFiles.forEach((file, index) => {
     const sizeKB = (file.size / 1024).toFixed(1);
 
@@ -9,16 +13,20 @@ function renderFilePreview(){
 
     if(file.type === 'image'){
       pill.innerHTML = `
-        <img src="${file.url}" class="image-thumb" alt="${file.name}" style="margin-right:8px">
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <div style="font-weight:700">${file.name}</div>
-          <div style="font-size:12px;color:var(--muted)">${sizeKB} KB • ${file.tokens} tokens</div>
-        </div>
-        <div style="margin-left:auto"><button data-index="${index}">✕</button></div>
-      `;
+      <img src="${file.url}" class="image-thumb" alt="${file.name}" style="margin-right:8px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-weight:700">${shortName(file.name)}</div>
+        <div style="font-size:12px;color:var(--muted)">
+          ${sizeKB} KB • ${file.tokens} tokens
+      </div>
+    </div>
+    <div style="margin-left:auto">
+      <button data-index="${index}">✕</button>
+    </div>
+    `;
     } else {
       pill.innerHTML = `
-        📄 ${file.name} (${sizeKB} KB • ${file.tokens} tokens)
+        📄 ${shortName(file.name)} (${sizeKB} KB • ${file.tokens} tokens)
         <button data-index="${index}">✕</button>
       `;
     }
