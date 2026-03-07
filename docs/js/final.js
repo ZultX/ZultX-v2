@@ -414,8 +414,6 @@ input && input.addEventListener('keydown', function(e) {
   }
 });
 input && input.addEventListener("input", ()=> { input.style.height = "auto"; const maxHeight = 100; input.style.height = Math.min(input.scrollHeight, maxHeight) + "px"; });
-
-});
 /* ---------- Init conversation correctly ---------- */
 
 const savedConvo = localStorage.getItem("zultx_last_convo");
