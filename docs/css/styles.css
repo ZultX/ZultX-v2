@@ -196,15 +196,6 @@ html.light .msg.user{background:linear-gradient(180deg,#fff,#fbfbfb);color:var(-
 html.light .msg.ai{background:linear-gradient(180deg,#f7f7f7,#efefef);color:var(--text);border-left:4px solid var(--accent)}
 
 /* compose area */
-.compose{
-  position:sticky;
-  bottom:0;
-  padding:8px 10px;
-  background:transparent;
-  display:flex;
-  justify-content:center;
-  z-index:80;
-}
 .compose-inner{
   display:flex;
   align-items:center;
