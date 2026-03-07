@@ -810,16 +810,6 @@ html.light .ai-pulse{
     line-height:1.4;
   }
 
-  /* Touch-friendly tools */
-  .tool-square,
-  .send-square{
-    width:42px;
-    height:42px;
-    min-width:42px;
-    min-height:42px;
-    border-radius:14px;
-  }
-
   /* Compact plus panel */
   .plus-panel{
     left:12px;
@@ -1612,12 +1602,12 @@ html.dark .plus-panel * {
 
   /* Make tool buttons smaller */
   .tool-square,
-  .send-square{
-    width:34px;
-    height:34px;
-    border-radius:10px;
-    font-size:16px;
-  }
+.send-square{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  font-size:14px;
+}
 
   /* Improve tap feel */
   .plus-panel .mode-btn:active{
