@@ -107,28 +107,24 @@
 
     <div class="compose">
       <div class="compose-inner modern-compose">
-        <!-- LEFT TOOL SQUARES -->
+        <!-- TEXTAREA (TOP) -->
+        <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
+        <!-- BUTTON ROW (BOTTOM) -->
         <div class="compose-tools">
           <button class="tool-square" id="plusBtn">+</button>
           <button class="tool-square" id="attachBtn">📎</button>
+          <div id="tokenCounter" class="token-counter">0 tokens</div>
+          <button id="scrollDownBtn" class="scroll-down-btn">↓</button>
+          <button class="send-square" id="sendBtn">↑</button>
         </div>
-        <!-- INPUT -->
-        <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
-        <div id="tokenCounter" class="token-counter">0 tokens</div>
-        <button id="scrollDownBtn" class="scroll-down-btn">↓</button>
         <div id="dropOverlay" class="drop-overlay">
           Drop txt files here
         </div>
         <div id="uploadSpinner" class="upload-spinner"></div>
         <input type="file" id="fileInput" accept=".txt,image/*" style="display:none;" multiple>
-        <!-- image & camera & video inputs (hidden) -->
         <input type="file" id="imageInput" accept="image/*" style="display:none;" multiple>
         <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
         <input type="file" id="videoInput" accept="video/*" style="display:none;">
-        <!-- SEND -->
-        <button class="send-square" id="sendBtn">
-          ↑
-        </button>
       </div>
     </div>
   </main>
