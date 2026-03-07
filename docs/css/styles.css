@@ -2504,16 +2504,37 @@ body {
 .compose{
   position:relative;
 }
+
 .file-preview-container{
   position:absolute;
   bottom:100%;
   left:0;
   width:100%;
   display:flex;
-  flex-wrap:wrap;
   gap:8px;
+  flex-wrap:wrap;
   padding:0 10px;
   margin-bottom:8px;
+}
+
+.file-pill{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:12px;
+  background:#1a73e8;
+  color:white;
+  font-size:13px;
+  max-width:220px;
+}
+
+.file-pill button{
+  margin-left:auto;
+  border:none;
+  background:none;
+  color:white;
+  cursor:pointer;
 }
 
 
@@ -2525,15 +2546,6 @@ body {
 .mobile-full{
   width:100%;
   max-width:none;
-}
-.file-pill{
-  max-width:140px;
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-}
-.file-pill{
-  backdrop-filter:blur(8px);
 }
 /* Reduced motion respect */
 @media (prefers-reduced-motion:reduce){
