@@ -161,14 +161,13 @@ function refreshHistoryList(){
       confirmAndDelete(k);
     };
 
+    let pressTimer;
     el.addEventListener('touchstart', ()=>{
-      this.pressTimer = setTimeout(()=> confirmAndDelete(k), 650);
-    }, {passive:true});
-
+      pressTimer = setTimeout(()=> confirmAndDelete(k), 650);
+    });
     el.addEventListener('touchend', ()=>{
-      clearTimeout(this.pressTimer);
-    }, {passive:true});
-
+      clearTimeout(pressTimer);
+    });
     historyList.appendChild(el);
   }
 }
@@ -416,9 +415,6 @@ input && input.addEventListener('keydown', function(e) {
 });
 input && input.addEventListener("input", ()=> { input.style.height = "auto"; const maxHeight = 100; input.style.height = Math.min(input.scrollHeight, maxHeight) + "px"; });
 
-input.addEventListener("input", () => {
-  input.style.height = "auto";
-  input.style.height = input.scrollHeight + "px";
 });
 /* ---------- Init conversation correctly ---------- */
 
@@ -759,6 +755,8 @@ refreshAccountUI();
 loadSuggestions();
 
 /* ---------- small helpers: click outside chat area closes side on mobile (improve UX) ---------- */
+const scrollDownBtn = document.getElementById("scrollDownBtn");
+
 chatArea.addEventListener("scroll", () => {
   const isNearBottom =
     chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < 100;
@@ -769,8 +767,6 @@ chatArea.addEventListener("scroll", () => {
     scrollDownBtn.style.display = "none";
   }
 });
-
-const scrollDownBtn = document.getElementById("scrollDownBtn");
 
 function toggleScrollButton(){
   const nearBottom =
