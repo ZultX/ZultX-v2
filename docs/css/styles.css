@@ -82,7 +82,7 @@ body{
 .logo .x-black{margin-left:6px;background:var(--outline);color:var(--text);padding:4px 8px;border-radius:8px;font-size:14px;font-weight:800}
 
 /* header right actions */
-.header-actions{display:none;gap:10px;align-items:center}
+.header-actions{display:flex;gap:10px;align-items:center}
 .top-tip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--glass);cursor:pointer}
 .version-badge{font-size:13px;color:var(--muted)}
 html.dark header{
