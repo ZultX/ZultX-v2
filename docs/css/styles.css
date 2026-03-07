@@ -363,12 +363,7 @@ html.dark .msg.ai pre{
 .msg{
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.file-preview-container{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:8px;
-}
+
 .chat-wrap{
   scroll-behavior: smooth;
   overflow-y: auto;
@@ -2506,18 +2501,21 @@ body {
 /* ======================================== */
 /* ===== COMPACT UTILITY CLASSES ========== */
 /* ======================================== */
+.compose{
+  position:relative;
+}
 .file-preview-container{
   position:absolute;
-  bottom:70px;
-  left:50%;
-  transform:translateX(-50%);
+  bottom:100%;
+  left:0;
   width:100%;
-  max-width:820px;
   display:flex;
-  gap:8px;
   flex-wrap:wrap;
+  gap:8px;
   padding:0 10px;
+  margin-bottom:8px;
 }
+
 
 /* Use these in HTML for mobile optimization */
 .mobile-compact{
@@ -2533,6 +2531,9 @@ body {
   overflow:hidden;
   white-space:nowrap;
   text-overflow:ellipsis;
+}
+.file-pill{
+  backdrop-filter:blur(8px);
 }
 /* Reduced motion respect */
 @media (prefers-reduced-motion:reduce){
