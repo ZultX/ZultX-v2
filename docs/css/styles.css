@@ -2536,7 +2536,11 @@ body {
   color:white;
   cursor:pointer;
 }
-
+.file-pill div:first-child{
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
 
 /* Use these in HTML for mobile optimization */
 .mobile-compact{
