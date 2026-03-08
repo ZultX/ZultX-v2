@@ -2541,6 +2541,13 @@ body {
   white-space:nowrap;
   text-overflow:ellipsis;
 }
+.file-preview-container{
+  pointer-events:none;
+}
+
+.file-pill{
+  pointer-events:auto;
+}
 
 /* Use these in HTML for mobile optimization */
 .mobile-compact{
