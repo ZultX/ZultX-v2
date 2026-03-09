@@ -230,8 +230,10 @@ function updateTokenDisplay(){
   const fileTokens = uploadedFiles.reduce((a,b)=>a+b.tokens,0);
   const total = inputTokens + fileTokens;
 
-  document.getElementById("tokenCounter").textContent =
-    `${total} tokens total`;
+  const counter = document.getElementById("tokenCounter");
+  if(counter){
+    counter.textContent = `${total} tokens total`;
+  }
 }
 
 input.addEventListener("input", updateTokenDisplay);
