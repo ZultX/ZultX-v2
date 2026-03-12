@@ -2367,6 +2367,49 @@ button:active, .suggest-card:active, .side-btn:active, .tool-square:active, .sen
 .suggest-card:hover, .history-item:hover {
   border-color: rgba(255, 215, 0, 0.3);
 }
+/* ====== Red "long-think" circle (use with .ai-pulse.alert) ====== */
+.ai-pulse.alert{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+
+  /* bright ruby → deep garnet radial for a premium gem-like feel */
+  background: radial-gradient(circle at 30% 30%,
+    #fff7fb 0%,
+    #ffd9e0 12%,
+    #ff6b8a 35%,
+    #ff2a55 60%,
+    #8a002f 100%
+  );
+
+  box-shadow:
+    0 0 14px rgba(255,80,80,0.95),
+    0 0 30px rgba(255,80,80,0.6),
+    0 0 50px rgba(255,80,80,0.35),
+    inset 0 2px 6px rgba(255,255,255,0.85);
+
+  filter: drop-shadow(0 0 12px rgba(255,80,80,0.95));
+  animation: alertPulse 1.25s ease-in-out infinite;
+}
+
+/* subtle crystal-like breathing */
+@keyframes alertPulse {
+  0%{
+    transform: scale(1);
+    opacity:0.85;
+    filter:brightness(1);
+  }
+  50%{
+    transform: scale(1.45);
+    opacity:1;
+    filter:brightness(1.45);
+  }
+  100%{
+    transform: scale(1);
+    opacity:0.85;
+    filter:brightness(1);
+  }
+}
 
 /* 9. Premium audio/visual feedback simulation */
 .msg.ai.new {
