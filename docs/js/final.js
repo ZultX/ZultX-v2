@@ -341,7 +341,7 @@ async function sendMessage(){
     if(pulse){
       pulse.classList.add("alert");
     }
-  },1000); 
+  },5000); 
 
   try{
     const token = getToken();
