@@ -1993,25 +1993,46 @@ html.light .side {
 }
 
 /* 12. TYPING INDICATOR ENHANCEMENT */
-.ai-pulse {
-  background: radial-gradient(circle at 30% 30%, #fff3a1, #ffd54a, #f3c623, #b8860b);
-  box-shadow: 
-    0 0 20px rgba(255, 215, 0, 0.8),
-    0 0 40px rgba(255, 215, 0, 0.4),
-    0 0 60px rgba(255, 215, 0, 0.2);
-  animation: premiumPulse 2s ease-in-out infinite;
-}
+.ai-pulse{
+  width:14px;
+  height:14px;
+  border-radius:50%;
 
-@keyframes premiumPulse {
-  0%, 100% { 
-    transform: scale(1); 
-    opacity: 0.8;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  background: radial-gradient(circle at 30% 30%,
+    #fff8cc 0%,
+    #ffe066 25%,
+    #ffd700 45%,
+    #f3c623 65%,
+    #b8860b 100%
+  );
+
+  box-shadow:
+    0 0 12px rgba(255,215,0,0.9),
+    0 0 26px rgba(255,215,0,0.7),
+    0 0 42px rgba(255,215,0,0.5),
+    inset 0 2px 4px rgba(255,255,255,0.6);
+
+  filter: drop-shadow(0 0 10px rgba(255,215,0,0.9));
+
+  animation: premiumGoldPulse 1.6s ease-in-out infinite;
+}
+@keyframes premiumGoldPulse{
+  0%{
+    transform: scale(1);
+    opacity:0.8;
+    filter:brightness(1);
   }
-  50% { 
-    transform: scale(1.2); 
-    opacity: 1;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.5);
+
+  50%{
+    transform: scale(1.35);
+    opacity:1;
+    filter:brightness(1.35);
+  }
+
+  100%{
+    transform: scale(1);
+    opacity:0.8;
+    filter:brightness(1);
   }
 }
 
