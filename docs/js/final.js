@@ -376,15 +376,11 @@ async function sendMessage(){
   }catch(err){
     console.error(err);
 
-    // clear timer and remove alert if added
-    if(aiDiv._longThinkTimer){ clearTimeout(aiDiv._longThinkTimer); aiDiv._longThinkTimer = null; }
     const pulseNow = aiDiv.querySelector('.ai-pulse');
     if(pulseNow) pulseNow.classList.remove('alert');
 
     aiDiv.textContent = "⚠️ Connection error.";
   }finally{
-    // ensure no timer leak in any code path
-    if(aiDiv._longThinkTimer){ clearTimeout(aiDiv._longThinkTimer); aiDiv._longThinkTimer = null; }
     renderFilePreview();
     updateTokenDisplay();
     sendBtn.disabled = false;
