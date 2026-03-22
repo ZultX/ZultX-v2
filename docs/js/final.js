@@ -210,33 +210,25 @@ function addSystemMsg(text){
   chatArea.appendChild(d); chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-function fakeStream(element, fullText, speed = 5) {
+function fakeStream(element, fullText, chunkSize = 30) {
   element.innerHTML = "";
   let i = 0;
 
   function type() {
-
-    // 🔥 if user left tab → instantly finish
-    if (document.hidden) {
-      element.innerHTML = marked.parse(fullText);
-      element.querySelectorAll("pre code").forEach(block => hljs.highlightElement(block));
-      enhanceCodeBlocks(element);
-      return;
-    }
-
     if (i < fullText.length) {
-      element.textContent += fullText[i++];
+      element.textContent += fullText.slice(i, i + chunkSize);
+      i += chunkSize;
       chatArea.scrollTop = chatArea.scrollHeight;
-      setTimeout(type, speed);
+      requestAnimationFrame(type);
     } else {
       element.innerHTML = marked.parse(fullText);
-      element.querySelectorAll("pre code").forEach(block => hljs.highlightElement(block));
       enhanceCodeBlocks(element);
     }
   }
 
   type();
 }
+
 
 function enhanceCodeBlocks(container){
   container.querySelectorAll('pre code').forEach(block => {
