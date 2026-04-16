@@ -1,210 +1,430 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ZultX AI Decision Engine – Autonomous Intelligence System</title>
-<meta name="description" content="ZultX AI Decision Engine is an open-source autonomous AI system for complex decision making, reasoning, and intelligent automation. Designed for developers and modern applications." />
-<meta name="keywords" content="AI Decision Engine, Autonomous AI, Decision Intelligence, AI reasoning system, smart decision AI, open source AI, ZultX" />
-<meta property="og:title" content="ZultX AI Decision Engine – Autonomous Intelligence System" />
-<meta property="og:description" content="An AI system for autonomous decision making, reasoning, and intelligent automation. Built for developers and builders." />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://zultx.github.io/ZultX-v2/" />
-<meta property="og:image" content="https://zultx.github.io/ZultX-v2/preview.png" />
-<link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#0f172a">
-<meta name="google-site-verification" content="ZPjCIwA1WKlXdH9n68BLts7CbCRwKlmwgymRsyWMawU" />
-<link rel="canonical" href="https://zultx.github.io/ZultX-v2/" />
-<link rel="preconnect" href="https://zultx.onrender.com">
-<link rel="dns-prefetch" href="https://zultx.onrender.com">
-<link rel="icon" href="favicon.ico" type="image/x-icon">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-<meta property="og:site_name" content="ZultX">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/styles.css">
-  
-<script type="application/ld+json">
-{ 
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "ZultX",
-  "alternateName": "Zultx",
-  "url": "https://zultx.github.io/ZultX-v2/"
-}
-</script>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9101851301102739"
-     crossorigin="anonymous"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-  marked.setOptions({
-    gfm: true,        // GitHub-style markdown (tables, task lists)
-    breaks: true,    // Line breaks without double enter
-    smartLists: true,
-    smartypants: true
-  });
-</script>
-
-<link rel="stylesheet"
- href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZultX</title>
+  <meta name="theme-color" content="#0f172a" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #10172d;
+      --panel-2: #0f172a;
+      --border: rgba(255,255,255,.08);
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --user: #1f2937;
+      --assistant: #111827;
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at top, rgba(124,58,237,.16), transparent 50%), var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 15, 30, .72);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+    .brand-badge {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), #06b6d4);
+      box-shadow: 0 0 0 6px rgba(124,58,237,.12);
+    }
+    .wrap {
+      width: min(900px, 100% - 24px);
+      margin: 0 auto;
+    }
+    .chat {
+      padding: 18px 0 140px;
+    }
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .msg {
+      max-width: min(760px, 92%);
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      white-space: pre-wrap;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(180deg, rgba(124,58,237,.14), rgba(124,58,237,.08)), var(--user);
+      border-top-right-radius: 6px;
+    }
+    .msg.assistant {
+      align-self: flex-start;
+      background: linear-gradient(180deg, rgba(34,197,94,.08), rgba(255,255,255,.02)), var(--assistant);
+      border-top-left-radius: 6px;
+    }
+    .meta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .composer {
+      position: sticky;
+      bottom: 0;
+      padding: 16px 0 20px;
+      background: linear-gradient(to top, rgba(11,16,32,1) 75%, rgba(11,16,32,.4));
+      border-top: 1px solid rgba(255,255,255,.04);
+    }
+    .composer-inner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: rgba(16,23,45,.9);
+      box-shadow: var(--shadow);
+    }
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      max-height: 160px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font: inherit;
+      line-height: 1.5;
+      padding: 14px 12px;
+    }
+    textarea::placeholder { color: #64748b; }
+    button {
+      border: 0;
+      outline: 0;
+      cursor: pointer;
+      color: white;
+      font: inherit;
+      border-radius: 16px;
+      padding: 14px 18px;
+      transition: transform .12s ease, opacity .12s ease, background .12s ease;
+    }
+    button:active { transform: scale(.98); }
+    .send {
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+      min-width: 92px;
+      font-weight: 700;
+    }
+    .send[disabled] { opacity: .6; cursor: not-allowed; }
+    .stop {
+      background: rgba(239, 68, 68, .18);
+      border: 1px solid rgba(239, 68, 68, .28);
+      min-width: 92px;
+      font-weight: 700;
+    }
+    .status {
+      padding: 8px 2px 0;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 20px;
+    }
+    .hint {
+      padding: 10px 2px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    code, pre {
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .empty {
+      margin: 42px 0 0;
+      padding: 22px;
+      border: 1px dashed rgba(255,255,255,.12);
+      border-radius: 22px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(255,255,255,.02);
+    }
+    @media (max-width: 640px) {
+      .wrap { width: min(100% - 14px, 100%); }
+      .msg { max-width: 96%; }
+      .composer-inner { padding: 10px; border-radius: 18px; }
+      button { padding: 12px 14px; }
+      textarea { min-height: 46px; }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <div style="display:flex;gap:12px;align-items:center">
-    <div id="mobileMenuBtn" class="top-tip mobile-only">☰</div>
-    <div style="display:flex;gap:12px;align-items:center">
-      <div class="logo mobile-hidden" id="smallLogo">
-        <span class="fire">Zult</span><span class="x-black">X</span>
+  <div class="app">
+    <header>
+      <div class="wrap">
+        <div class="brand"><span class="brand-badge"></span><span>ZultX</span></div>
       </div>
-    </div>
+    </header>
 
-    <!-- temp chat 3/4 circle icon — mobile-only -->
-    <div id="tempChatBtn" class="temp-chat-icon mobile-only" title="Temporary chats">
-      <!-- 3/4 circle SVG -->
-      <svg viewBox="0 0 24 24" fill="none" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,215,0,0.06)" stroke-width="2"/>
-      </svg>
-    </div>
+    <main class="wrap chat">
+      <div id="messages" class="messages"></div>
+      <div id="empty" class="empty">Ask something and the reply will stream here.</div>
+    </main>
 
-    <div class="version-badge">v1.4</div>
-  </div>
-</header>
-
-<!-- overlay for closing side/modals -->
-<div id="z-overlay" aria-hidden="true"></div>
-
-<div class="app">
-  <aside class="side" id="sidePanel">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div class="side-actions" id="sideActionsRow">
-        <div id="sideTheme" class="side-btn" aria-label="Toggle theme">🌗</div>
-        <div id="sideLetters" class="side-btn" aria-label="Letters">✉️</div>
-        <div id="sideTip" class="side-btn" aria-label="Tip">🍏</div>
-        <div id="sideShare" class="side-btn" aria-label="Share">🔗</div>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div><strong>ZultX</strong><div class="small-muted">Your Decision Engine</div></div>
-      <div class="small-muted" id="sideUserName">User</div>
-    </div>
-
-    <h3 style="margin-top:6px">Your Chats</h3>
-    <div id="historyList" aria-live="polite"></div>
-    <div style="height:12px"></div>
-    <div class="menu-btn" id="newChatBtn">+ New chat</div>
-    <div style="height:14px"></div>
-    <div class="hint">History. Hold / right-click an item to delete. Click new chat for new chats.</div>
-  </aside>
-
-  <main class="main">
-    <div id="centerScreen" class="center-screen">
-      <div class="center-inner">
-        <div class="center-title">What Can ZultX Help With?</div>
-
-        <div class="suggest-grid" id="suggestGrid"></div>
-
-        <button id="startBtn" class="start-btn">Ask Something Complex</button>
-      </div>
-    </div>
-
-    <div id="chatArea" class="chat-wrap" style="display:none" aria-live="polite"></div>
-
-    <div class="compose">
-      <button id="scrollDownBtn" class="scroll-down-btn">↓</button>
-      <!-- FILE PREVIEW -->
-      <div id="filePreviewContainer" class="file-preview-container"></div>
-      <div class="compose-inner modern-compose">
-        <!-- TEXTAREA (TOP) -->
-        <textarea id="input" placeholder="Ask ZultX..." rows="1"></textarea>
-        <!-- BUTTON ROW (BOTTOM) -->
-        <div class="compose-tools">
-          <button class="tool-square" id="plusBtn">+</button>
-          <button class="tool-square" id="attachBtn">📎</button>
-          <button class="send-square" id="sendBtn">↑</button>
+    <section class="composer">
+      <div class="wrap">
+        <div class="composer-inner">
+          <textarea id="input" placeholder="Ask ZultX..."></textarea>
+          <button id="sendBtn" class="send">Send</button>
+          <button id="stopBtn" class="stop" style="display:none;">Stop</button>
         </div>
-        <div id="dropOverlay" class="drop-overlay">
-          Drop txt files here
-        </div>
-        <div id="uploadSpinner" class="upload-spinner"></div>
-        <input type="file" id="fileInput" accept=".txt,image/*" style="display:none;" multiple>
-        <input type="file" id="imageInput" accept="image/*" style="display:none;" multiple>
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-        <input type="file" id="videoInput" accept="video/*" style="display:none;">
+        <div id="status" class="status"></div>
+        <div class="hint">Streaming first. If SSE is unavailable, it falls back to full text.</div>
       </div>
-    </div>
-  </main>
-</div>
-
-<!-- Letters modal -->
-<div id="lettersModal" class="modal sm" aria-hidden="true">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <h2>Letter</h2>
-    <button id="closeLettersBtn">Close</button>
+    </section>
   </div>
-  <pre id="modalLettersContent" style="white-space:pre-wrap;color:var(--text);margin-top:12px"></pre>
-</div>
 
-<!-- Tip modal -->
-<div id="tipModal" class="modal sm" aria-hidden="true">
-  <h3>Tip ZultX (preview)</h3>
-  <div style="display:flex;gap:8px;margin-top:12px">
-    <button onclick="createTip(10)">₹10</button>
-    <button onclick="createTip(40)">₹40</button>
-    <button onclick="createTip(100)">₹100</button>
-    <button onclick="createTip(500)">₹500</button>
-  </div>
-  <div style="margin-top:12px"><button id="closeTipBtn">Cancel</button></div>
-  <button id="copyUpiBtn" style="margin-top:8px">Copy UPI — 9358588509@fam</button>
-</div>
+  <script>
+    const API_BASE = 'https://zultx.onrender.com/ask';
+    const messagesEl = document.getElementById('messages');
+    const emptyEl = document.getElementById('empty');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
 
-<!-- Temp chats modal -->
-<div id="tempModal" class="modal" aria-hidden="true">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <h2>Temporary Chats</h2>
-    <button id="closeTempBtn">Close</button>
-  </div>
-  <div style="margin-top:12px" class="small-muted">Temporary chats are not saved to history. Long-press or right-click to delete.</div>
-  <div id="tempList" class="temp-list"></div>
-</div>
+    let abortController = null;
+    let currentAssistantMsg = null;
+    let currentAssistantText = '';
+    let isStreaming = false;
 
-<!-- PREMIUM UI -->
-<div id="premiumAuth" class="premium-modal" aria-hidden="true">
-  <div class="premium-card" role="dialog" aria-modal="true" id="premiumCard">
-    <div class="premium-header">
-      <div>
-        <div class="premium-title">ZultX — Account Access</div>
-        <div class="premium-sub">Sign up or login to unlock saved memories & preferences. Try free without signup.</div>
-      </div>
-      <div>
-        <button id="premiumClose" class="menu-btn">Close</button>
-      </div>
-    </div>
+    function setStatus(text) {
+      statusEl.textContent = text || '';
+    }
 
-    <div class="premium-form" id="premiumFormArea">
-      <input id="p_username" placeholder="Username" />
-      <input id="p_email" placeholder="Email (signup only)" style="display:none;" />
-      <div style="position:relative; display:flex; gap:8px; align-items:center;">
-        <input id="p_password" type="password" placeholder="Password" style="flex:1;" />
-        <button id="p_eye" class="pw-eye" title="Show/Hide password">👁‍🗨</button>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button id="p_submit" class="menu-btn">Login</button>
-        <button id="p_toggle" class="menu-btn">Switch to Signup</button>
-        <button id="p_guest" class="menu-btn" title="Try without login">Try without login</button>
-        <div id="p_msg" class="small-muted" style="margin-left:8px"></div>
-      </div>
-    </div>
-  </div>
-</div>
+    function showEmpty() {
+      emptyEl.style.display = messagesEl.children.length ? 'none' : 'block';
+    }
 
+    function escapeHtml(str) {
+      return str
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
 
-<!-- libs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/most.js"></script>
-<script src="js/final.js"></script>
+    function addMessage(role, text = '') {
+      const el = document.createElement('div');
+      el.className = `msg ${role}`;
+      el.innerHTML = escapeHtml(text);
+      messagesEl.appendChild(el);
+      showEmpty();
+      return el;
+    }
+
+    function scrollToBottom() {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function setButtons(streaming) {
+      isStreaming = streaming;
+      sendBtn.style.display = streaming ? 'none' : 'inline-block';
+      stopBtn.style.display = streaming ? 'inline-block' : 'none';
+      inputEl.disabled = streaming;
+    }
+
+    function getPrompt() {
+      return inputEl.value.trim();
+    }
+
+    function buildUrl(prompt) {
+      const url = new URL(API_BASE);
+      url.searchParams.set('q', prompt);
+      url.searchParams.set('stream', '1');
+      return url.toString();
+    }
+
+    function appendAssistantChunk(chunk) {
+      currentAssistantText += chunk;
+      if (currentAssistantMsg) {
+        currentAssistantMsg.innerHTML = escapeHtml(currentAssistantText);
+        scrollToBottom();
+      }
+    }
+
+    async function fallbackFullText(prompt) {
+      setStatus('Loading full text fallback…');
+      const url = new URL(API_BASE);
+      url.searchParams.set('q', prompt);
+      url.searchParams.set('stream', '0');
+
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json,text/plain,*/*' },
+        signal: abortController.signal,
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      let text = '';
+
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        text = data.answer ?? data.text ?? data.response ?? JSON.stringify(data);
+      } else {
+        text = await res.text();
+      }
+
+      currentAssistantText = text || '(empty response)';
+      currentAssistantMsg.innerHTML = escapeHtml(currentAssistantText);
+      setStatus('Done');
+      scrollToBottom();
+    }
+
+    async function streamSSE(prompt) {
+      const url = buildUrl(prompt);
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+        signal: abortController.signal,
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let sawStreamData = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) sawStreamData = true;
+        buffer += chunk;
+
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const packet = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+
+          const lines = packet.split(/\r?\n/);
+          let eventData = '';
+          for (const line of lines) {
+            if (line.startsWith('data:')) eventData += line.slice(5).trimStart();
+            if (line.startsWith('event:')) continue;
+          }
+
+          if (!eventData) continue;
+          if (eventData === '[DONE]') {
+            setStatus('Done');
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(eventData);
+            const token = parsed.token ?? parsed.delta ?? parsed.text ?? parsed.content;
+            if (typeof token === 'string' && token) {
+              appendAssistantChunk(token);
+              setStatus('Streaming…');
+            }
+          } catch {
+            appendAssistantChunk(eventData);
+            setStatus('Streaming…');
+          }
+        }
+      }
+
+      if (!sawStreamData && !currentAssistantText) {
+        throw new Error('No SSE data received');
+      }
+
+      setStatus('Done');
+    }
+
+    async function ask() {
+      const prompt = getPrompt();
+      if (!prompt || isStreaming) return;
+
+      addMessage('user', prompt);
+      inputEl.value = '';
+      currentAssistantText = '';
+      currentAssistantMsg = addMessage('assistant', '');
+      setButtons(true);
+      setStatus('Connecting…');
+      scrollToBottom();
+
+      abortController = new AbortController();
+
+      try {
+        await streamSSE(prompt);
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setStatus('Stopped');
+          return;
+        }
+        try {
+          await fallbackFullText(prompt);
+        } catch (fallbackErr) {
+          currentAssistantText = `Error: ${fallbackErr?.message || fallbackErr}`;
+          currentAssistantMsg.innerHTML = escapeHtml(currentAssistantText);
+          setStatus('Failed');
+        }
+      } finally {
+        setButtons(false);
+        abortController = null;
+        showEmpty();
+      }
+    }
+
+    function stopAsk() {
+      if (abortController) abortController.abort();
+      setButtons(false);
+      setStatus('Stopped');
+    }
+
+    sendBtn.addEventListener('click', ask);
+    stopBtn.addEventListener('click', stopAsk);
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        ask();
+      }
+    });
+
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    });
+
+    showEmpty();
+  </script>
 </body>
 </html>
