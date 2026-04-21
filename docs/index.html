@@ -339,7 +339,7 @@
           const lines = packet.split(/\r?\n/);
           let eventData = '';
           for (const line of lines) {
-            if (line.startsWith('data:')) eventData += line.slice(5).trimStart();
+            if (line.startsWith('data:')) eventData += line.slice(5);
             if (line.startsWith('event:')) continue;
           }
 
