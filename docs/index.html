@@ -266,7 +266,10 @@
     }
 
     function appendAssistantChunk(chunk) {
-      currentAssistantText += chunk;
+      if (chunk) {
+          currentAssistantText += chunk;
+      }
+
       if (currentAssistantMsg) {
         currentAssistantMsg.textContent = currentAssistantText;
         scrollToBottom();
@@ -344,7 +347,7 @@
           }
 
           if (!eventData) continue;
-          if (eventData === '[DONE]') {
+          if (eventData.trip() === '[DONE]') {
             setStatus('Done');
             return;
           }
@@ -367,7 +370,8 @@
         throw new Error('No SSE data received');
       }
 
-      setStatus('Done');
+      setStatus('');  
+      
     }
 
 
