@@ -348,11 +348,11 @@
           }
 
           if (!eventData) continue;
-          parsed = JSON.parse(eventData);
+          const parsed = JSON.parse(eventData);
           const token = parsed.token ?? parsed.delta ?? parsed.text ?? parsed.content;
           if (token === '[DONE]') {
             setStatus('Done');
-            return;const
+            return;
           }
           
 
