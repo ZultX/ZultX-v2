@@ -288,6 +288,22 @@
       inputEl.disabled = streaming;
     }
 
+    let markdownTimer = null;
+    function scheduleMarkdownRender() {
+      if (markdownTimer) return;
+
+      markdownTimer = setTimeout(() => {
+        markdownTimer = null;
+
+        if (!currentAssistantContentNode) return;
+
+        const html = marked.parse(currentAssistantText);
+        currentAssistantContentNode.innerHTML = html;
+
+        scrollToBottom();
+      }, 300); // 🔥 tweak: 200–500ms sweet spot
+    }
+    
     function addMessage(role, text = '') {
       const el = document.createElement('div');
       el.className = `msg ${role}`;
@@ -352,23 +368,21 @@
       scheduleFlush();
     }
 
-    function finalizeAssistantMessage() {
-      if (pendingText) {
-        currentAssistantText += pendingText;
-        pendingText = '';
-      }
 
+    function finalizeAssistantMessage() {
       if (currentAssistantContentNode) {
-        currentAssistantContentNode.textContent = currentAssistantText;
+         currentAssistantContentNode.innerHTML = marked.parse(currentAssistantText);
       }
 
       if (currentCursorNode) {
         currentCursorNode.remove();
-        currentCursorNode = null;
-      }
-
+       currentCursorNode = null;
+     }
       scrollToBottom();
     }
+    
+    
+      
 
     function resetAssistantState() {
       currentAssistantMsg = null;
@@ -482,6 +496,7 @@
           }
 
           appendAssistantChunk(token);
+          scheduleMarkdownRender();
           setStatus('Streaming…');
         }
       }
