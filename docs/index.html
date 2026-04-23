@@ -564,17 +564,34 @@
 
       try {
         const mode = document.getElementById('modeSwitch')?.value || 'backend';
+
         if (mode === 'puter') {
           await streamPuter(prompt);
         } else {
           await streamSSE(prompt);
-        }        
-      } catch (err) {
-        if (err && err.name === 'AbortError') {
-          setStatus('Stopped');
-          return;
         }
 
+      } catch (err) {
+       if (err && err.name === 'AbortError') {
+          setStatus('Stopped');
+          return;
+       }
+
+      const mode = document.getElementById('modeSwitch')?.value || 'backend';
+
+      // 🔥 ONLY fallback if backend mode
+      if (mode === 'backend') {
+        try {
+          await fallbackFullText(prompt);
+        } catch (fallbackErr) {
+          showError(fallbackErr);
+        }
+      } else {
+        // ❌ DO NOT fallback for puter
+        showError(err);
+     }
+    }    
+      
         try {
           await fallbackFullText(prompt);
         } catch (fallbackErr) {
