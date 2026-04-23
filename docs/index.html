@@ -409,6 +409,12 @@
       );
  
         for await (const part of response) {
+          const text =
+           part?.text ||
+           part?.delta ||
+           part?.message?.content ||
+           part?.choices?.[0]?.delta?.content ||
+           "";
           const text = part?.text || "";
           if (!text) continue;
 
